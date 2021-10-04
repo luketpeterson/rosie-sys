@@ -1,0 +1,11 @@
+
+**/*.o
+**/*.a
+**/*.so
+**/*.so.dSYM
+**/*.dSYM
+**/.DS_Store
+**/*~
+*.tar.gz
+
+# These are symlinks within the repo:

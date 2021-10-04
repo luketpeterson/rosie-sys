@@ -1,0 +1,837 @@
+2021-02-12  Jamie Jennings  <jamie@rosie-lang.org>
+
+	* 1.2.2:
+
+	FIXED: Build failed on some macos Big Sur installations because Apple no
+	longer ships the readline library.
+
+	And the changes made below for 1.2.2-beta* are included.
+
+2021-01-13  Jamie Jennings  <jamie@rosie-lang.org>
+
+	* 1.2.2-beta-4:
+
+	FIXED: Issue #114.  The documentation had some examples that no longer
+	worked, because the '-o' option must now be placed AFTER the command
+	('match', 'grep', or 'trace') on the command line.
+
+2020-05-01  Jamie Jennings  <jamie@rosie-lang.org>
+
+	* 1.2.2-beta:
+
+	FIXED: Issue #105. There was a bug that surfaced when using --rpl on the
+	command line with an argument that instantiated a package.
+
+	FIXED: Added platform detection appropriate to NixOS.
+
+	ENHANCED: The build is now implemented in phases, to make life easier
+	for packagers. 'make fetch' retrieves git submodules, so that all files
+	needed to build are available locally.  'make compile' compiles rosie,
+	with results going into a local build directory.  'make copy_to_build'
+	copies into the build directory the files (like documentation, and the
+	standard rpl library) that do not need compilation.  'make check' does a
+	very basic test that the executable in the build directory works.
+	Finally, 'make install' simply copies from the build directory to the
+	install destination, which defaults to /usr/local (configurable by
+	setting DESTDIR=<path> on the make command line).
+
+	NOTE: Now testing with address sanitizing and (separately) with
+	valgrind.
+
+	NOTE: Now testing (via docker) on Arch, Centos, Elementary, Fedora, and
+	Ubuntu, using the latest stable releases as of 30 April 2020.
+
+	NOTE: The 'test' target of the Makefile now looks for an optional ROSIE
+	variable which, when supplied, points to the rosie executable to be used
+	for testing.  This allows the system (or any) installation to be fully
+	white-box and black-box tested.  Black-box only is not yet a supported
+	option.
+
+	FIXED: A bug in the trace capability that surfaced when tracing a
+	complemented bracket expression.
+
+	FIXED: Issue #113, where 'word.dq' failed to match escaped backslashes
+	properly.
+
+	CHANGED: To run the rosie executable out of the build directory, use the
+	script 'rosie' at the top of the download directory.  The script ensures
+	that LD_LIBRARY_PATH is set to the build directory so that
+	build/bin/rosie will be able to load it.
+	The need for this script is due to an internal change that should not,
+	in other ways, be visible to users: the rosie executable now dynamically
+	loads librosie.so (librosie.dylib on MacOS).
+
+	FIXED: Issue #112, where we did not give enough credit in our README to
+	the handful of regex libraries that support the /x switch, which allows
+	whitespace and comments inside a regex.
+
+	ENHANCED: Issue #109 was essentially a user error, but we noticed that
+	the error message could be better for duplicate characters in a
+	character set, so we enhanced the message.
+
+	FIXED: Issue #102. The (usually relative) path to the rosie library
+	files (including rpl files and compiled lua files) was part of the rosie
+	executable, "baked in" at compile time.  Now, librosie simply looks in
+	its own directory for 'rosie', the directory with those needed files.
+	E.g. a system installation in /usr/local/lib will include
+	/usr/local/lib/librosie.so and /usr/local/lib/rosie.  The latter is the
+	directory with the files needed at runtime.
+
+
+2019-10-06  Jamie Jennings  <jamie@rosie-lang.org>
+
+	* 1.2.1
+
+	ENHANCED: The output of the 'expand' command has been improved to be
+	more understandable (though more improvements are needed) and to be more
+	faithful (that is, to more often generate valid RPL).
+
+	FIXED: Merge request !76 fixed a bug in the Makefile wrt putting
+	librosie.h into the correct directory.
+
+	FIXED: Issue #109. Where the error message was confusing, it is now more
+	clear.
+
+	FIXED: Issue #108. A unit test was being blocked when it should not have
+	been.  This was a bug.
+
+	ENHANCED: Added line numbers to unit test output.
+
+2019-07-14  Jamie Jennings  <jamie@rosie-lang.org>
+
+	* 1.2.0:
+
+	FIXED: Issue #105 (creating a package on the fly using the CLI flag
+	"--rpl").
+
+	ENHANCED: Documentation for librosie in doc/librosie.md
+
+	EXPERIMENTAL: Issue #103 Support for backreferences, see the file
+	extra/examples/backref.rpl for examples.
+
+	NEW: rpl/re.rpl with patterns for people who know regex and want to use
+	a similar set of short names, e.g. \s in regex is re.s in RPL.
+
+	NEW: rpl/char.rpl with a few patterns for processing UTF-8 and ASCII
+	characters.  These could be extended in future, e.g. for UTF-16.
+
+	REFACTOR: Internal change to how RPL infix expressions, e.g. A/B, are
+	parsed.  New technique implements Dykstra's "Shunting Yard" algorithm.
+	The change in the grammar caused the RPL language version number to
+	increment to RPL 1.3.
+
+	REFACTOR: The unit testing code that implements the "rosie test" command
+	has been significantly refactored.
+
+	CHANGED: The way unit test results are printed has been enhanced to
+	include more information.
+
+	ENHANCED: The CLI now accepts "--help" everywhere.  The "rosie help"
+	command is still the intended way to get help.
+
+	REFACTOR: The first set of steps towards loading compiled patterns from
+	disk have been implemented.
+
+	FIXED: Misc small unreported bugs.  See commit log for details.
+
+2019-03-11  Jamie Jennings  <jamie@rosie-lang.org>
+
+	* 1.1.0:
+
+	CHANGED: In net.rpl, the pattern "net.url" is now identical to
+	"net.url_common". The previous definition of "net.url", which matches
+	URLs according to the RFC spec, is now called "net.url_strict" to follow
+	the convention established by "net.fqdn_strict".
+
+	ENHANCED: The json.rpl package now includes patterns "json.object" and
+	"json.array", for those occasions when matching any "json.value" is not
+	what you want to do.
+
+	CHANGED: The C header file "librosie.h" has been revised so that it can
+	be used as a single header for code that calls "librosie" functions.  And
+	"make install" now copies this header to DESTDIR/include.
+
+	MOVED: The librosie "client libraries" (interfaces) have been moved into
+	their own repositories in https://gitlab.com/rosie-community/clients.
+
+	FIXED: Issue #85.  The JSON output no longer escapes the forward slash
+	(solidus) because it is not required to do so (and doing so makes JSON
+	harder to read).
+
+	FIXED: Issue #99 (bug in pattern "time.rfc3339"). Also fixed a bug in
+	the pattern where it deviated from the specification by allowing
+	whitespace before the offset.
+
+	FIXED: Bug in "time.rfc2822" where it did not, by default, accept
+	fractional seconds when present.  (Technically, fractional seconds is an
+	extension to the standard, but it is a common one.  Use
+	"time.rfc2822_strict" to follow the standard.)
+
+	CHANGED: The pattern "net.ipv4" used to accept any 3-digit number as a
+	segment.  It now accepts only 0-255.
+
+	CHANGED: The pattern "net.any" used to accept the input "1.2.3", which
+	is a valid domain name, and now it rejects such input.  This was done by
+	modifying "fqdn_practical".
+
+	ENHANCED: The pattern "net.ipv6_strict" is now exported, making it
+	available to use when you want to match ipv6 addresses but reject mixed
+	ipv6/ipv4 addresses.
+
+	ENHANCED: Issue #81.  The unit test framework now supports tests of
+	local identifiers with the "-- test local <id> ..." syntax.
+
+	ENHANCED: Unit test reporting is now more verbose, and includes a count
+	of blocked tests as well as passed and failed.
+
+	NEW: A sample installation script for WSL (Linux on Windows) in
+	extra/WSL/rosie_install.sh.
+
+	NEW: A small library for matching version strings
+	(rpl/ver.rpl). Currently only supports semver.
+
+	FIXED: Issue #80 (odd rpl compiler error message).
+
+	FIXED: Issue #91 (error in documentation about negative look-behind).
+
+	FIXED: Issue #87 (entering "." in the REPL threw an error).
+
+	ENHANCED: The "make install" script now looks for an existing Rosie
+	installation, and asks you to run "make installforce" to overwrite it. 
+
+	EXPERIMENTAL: The "rosie match" command takes an optional "--time"
+	option (after "match") which prints match time (in the user process) and
+	total time (also user).  The total time is the match time plus the time
+	needed to encode the output.  Formats meant for humans, like "-o color"
+	and "-o jsonpp" are slow.  THIS EXPERIMENTAL FEATURE MAY BE MODIFIED IN
+	A FUTURE RELEASE.  DO NOT DEPEND ON ITS OUTPUT FORMAT OR DETAILS OF ITS
+	OPERATION.
+
+	AND: A lot of internal refactoring was done in order to support the
+	future ability to build the run-time separately from the compiler and
+	the CLI.  Note that the rosie-lpeg submodule is no longer needed.  Also,
+	some small unreported bugs were fixed.
+
+2018-06-24  Jamie Jennings  <jjennings@us.ibm.com>
+
+	*  1.0.0:
+
+	CHANGED: In the definition of "all.things", a sequence of letters and
+	numbers is now recognized as an identifier.
+
+	CHANGED: Among the strings that "all.things" will recognize as an
+	identifier, the ":" character has been removed.  Now, "foo:bar" will
+	match as a word, a punctuation mark, and another word, where previously
+	it matched as a single identifier.
+
+	CHANGED: Now, "net.any" includes "net.url_common" instead of "net.url".
+	The pattern "url_common" matches URLs that have "://" after the scheme.
+
+2018-06-21  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-13:
+
+	FIXED: time.simple now accepts "0:00"
+
+	FIXED: all.things now classifies unsigned floats like "1.2" as floats
+
+	FIXED: black box tests now use "--norcfile" so they do not accidentally
+	pick up the ~/.rosierc file of the user running the tests
+
+2018-06-20  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-12:
+
+	FIXED: Moved from github.com to gitlab.com.
+
+	FIXED: The dependency finding function that the CLI uses to
+	automatically load packages was not looking inside bracket expressions
+	for RPL identifiers.
+
+2018-06-05  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-11:
+
+	FIXED: Bug in repl introduced in beta-10, when a change in color string
+	handling revealed a testing flaw whose root cause was a bug in
+	util.lua's os_execute_capture() function.
+
+	CHANGED: The 'subs' output encoder now returns an empty string when
+	there is a match but it has no submatches.  (It previously returned nil,
+	which caused a problem in librosie.c)
+
+	ENHANCED: The 'ci' macro now operates on character sets in addition to
+	literals.  It is still shallow, in the sense that it cannot change a
+	pattern bound to an identifier.  E.g. 'ci:foo' is the same as 'foo'.
+
+2018-05-11  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-10:
+
+	FIXED: Bug in num.rpl introduced in beta-9.  Related: For better
+	separation of responsibilities, the all.rpl package now tries harder to
+	distinguish between things that look alike, e.g. "1.2" is a float, not a
+	partially qualified domain.  And 'all.things' will parse "F0" as an
+	indentifier, not a hex number, even though it could be either.
+
+	FIXED: Issue #79.  The incorrect error message has been changed to the
+	correct one.
+
+	ENHANCED: The default color assignments for the 'color' output encoder
+	is now visible via the 'rosie config' command and the 'config() API'.
+	This makes it easier to see and modify it, and is a step in the
+	direction of supporting an /etc/rosierc file in the future.
+
+	ENHANCED: Three trace styles ("json", "full", "condensed") are now
+	supported in the API and CLI.  In the CLI, the '-o' option to the trace
+	command selects the trace style, which defaults to "condensed".
+
+	CHANGED: The CLI will now accept the '-o' option only AFTER the
+	commands match, grep, and trace.  Previously, '-o' could be put earlier
+	on the command line.
+
+2018-04-24  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-9:
+
+	CHANGED: The output option named "matches" is now named "data" for
+	consistency with the others, particularly "subs", since those are both
+	components of a match.
+
+	CHANGED: Removed the output option named "default".
+
+	FIXED: Bug in REPL when user enters sample data that is not a valid RPL
+	string, e.g. one with an invalid escape sequence.
+
+	FIXED: The pattern "num.float" now accepts all valid JSON numbers.
+	Also, "frac" (for "fraction") is now an alias and will no longer appear
+	in output from the "num" patterns.
+
+	ENHANCED: When a string containing RPL is loaded into an engine, and
+	that string declares that it is a package, say "foo", then a legitimate
+	package "foo" is created.  A subsequent call to	engine.load("import foo")
+	will now succeed.  An attempt to force a re-import via
+	engine.import("foo") will fail, however, because the engine has no way
+	of loading the RPL source again (it is not on the file system).
+
+2018-04-23  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-8:
+
+	ADDED: New functions in librosie for clients that want to examine how
+	RPL is parsed.  For expressions and blocks (sets of statements), you can
+	ask librosie to parse them, compute the free variables (references), and
+	compute the packages that need to be imported before the RPL can be
+	used.
+
+	CHANGED: It is no longer valid to give an empty string to the load()
+	function.  E.g. the CLI will now complain on --rpl ''.
+
+	CHANGED: The net.fqdn pattern used to accept floats like 1.2e03.  It no
+	longer does.  You can use net.fdqn_strict to accept all valid partially
+	qualified domain names, which would include 1.2e03.
+
+	CHANGED: In rosie.py, the boolean output encoder now returns True or
+	False instead of True or None.
+
+	ENHANCED: The cli and librosie now follow symlinks to find the Rosie
+	installation files (lib/*.luac, rpl/*.rpl, and others).
+
+	FIXED: The new_engine() function is now thread-safe.  There's a mutex
+	around previously unsafe part, so simultaneous engine creation in
+	multiple threads is safe, but part of it will only run in one thread at
+	a time.
+
+2018-04-10  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-7:
+
+	CHANGED: The rosie.py module for using Rosie with Python now supports a
+	load() function.  It is OPTIONAL to use load() in general, but is
+	necessary if you have multiple Rosie installations and you want to load
+	a specific librosie.so|dylib.
+
+2018-04-08  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-6:
+
+	FIXED: The liblua library now uses a non-locking feof to avoid a
+	deadlock that was observed due to a race condition when many threads
+	were using rosie.  Related: librosie no longer calls fflush() with a
+	NULL argument, which was triggering a walk over all open files.
+
+	FIXED: A build issue related to the (dreaded) use of recursive MAKE.
+
+	CHANGED: A breaking change was made to the Python librosie API in
+	rosie.py.  The rosie.engine() function no longer accepts any arguments,
+	whereas before it took the path to librosie.  Since the path to find
+	librosie can only be set before any engines are created, and will apply
+	to all engines, it has its own API: rosie.set_librosie_dir().
+
+	ENHANCED: The multi-threaded test program, src/librosie/C/mt.c, is now
+	structured more like a typical use case, in which each thread makes a
+	rosie engine, uses it, and then finalizes it.
+
+2018-03-31  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-5:
+
+	ENHANCED: The build process (Makefile) now allows librosie/rosie to be
+	built using a relative path to find the rosie installation.  That path
+	is relative to the librosie install directory when it starts with a
+	double slash ('//'), and relative to the current directory otherwise.
+	We recommend AGAINST building with a path that is relative to the
+	current directory, for security reasons.
+
+	FIXED: a bug in rosie.py that occured when printing some kinds of
+	errors.
+
+	CHANGED: warnings printed by execute_rcfile() are now returned to the
+	librosie client instead.
+
+2018-03-16  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-4:
+
+	FIXED: Some commands entered at the CLI did not respect some of the
+	command line options, e.g. "test" did not adopt the "--libpath"
+	setting.
+
+	FIXED: Some loader/compiler/parser messages, which are called
+	"violations", did not convert properly to JSON in librosie for return to
+	the calling program.
+
+2018-03-15  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-3:
+
+	ENHANCED: The sample docker files in extra/docker now includes python 3
+	and the official arch distro.
+
+	ENHANCED: There should be NO compile warnings from gcc as long as it is
+	gcc version 7 or higher.  Older versions will warn about the fallthrough
+	attribute, because they don't understand it.
+
+	FIXED: In rosie.py, a compiled pattern is now a proper python object,
+	and it contains an engine reference so that the engine cannot be GC'd
+	before its compiled patterns.  (This does not happen in Python 2.7, but
+	it does in Python 3.6.)
+
+	FIXED: Rosie is once again easy to install on OS X!  See
+	https://github.com/jamiejennings/homebrew-rosie
+
+2018-03-09  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-2:
+
+	CHANGED: The (undocumented) output encoder "none" has been removed.
+
+	NEW: An output encoder called "bool" was added.  It is not useful from
+	the command line, but when using librosie's match() function, it will
+	return a code 0/1 indicating a match or no match.
+
+	NEW: Python example program extra/examples/generic_sloc.py.
+
+	ENHANCED: When the user specifies an output encoder name that is not
+	supported, a proper error is returned.  Previously, the error that was
+	returned could be confused with a bug in librosie.
+
+	ENHANCED: `make install` now installs the rosie man page as well.
+
+	ENHANCED: Makefile was tweaked so that it works with the new brew
+	(http://brew.sh) formula for install Rosie on OS X.
+
+	FIXED: a bug in pattern net.fqdn_practical that caused it to include a
+	leading space in the capture.
+
+2018-02-25  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-beta-1
+
+	ENHANCED: The python module, rosie.py, now works with Python 2.7 and
+	Python 3.6.
+
+	CHANGED: The python module, rosie.py, now requires python 'bytes'
+	arguments, not python strings.  And it returns 'bytes' values as
+	well. Probably the rosie.py API should be enhanced to accept string
+	arguments and convert them to bytes, assuming they are UTF-8 encoded.
+
+	CHANGED: The all.things pattern has been modified such that text like
+	"C1" will be recognized as an identifier instead of a hex number.
+
+	CHANGED: The num.any pattern now looks for how the number ends, so that
+	the first 3 characters of "1.2.3.4" will not match as a float "1.2".
+	Note that num.float (and num.decimal) will match that, but num.any will
+	not.
+
+	CHANGED: In package net, introduced fqdn_practical to be an alternative
+	to fqdn_strict. (And, net.any looks for fqdn_practical now.)  The
+	difference is that fqdn_strict will match "1.2" as a partially qualified
+	domain name, but fqdn_practical will not.
+
+	CHANGED: The sample go client cannot be used with go1.9.4 due to a bug
+	in that go release.  The src/librosie/go/setup.sh script now checks for
+	that go version and produces an error.  We recommend go1.10.
+
+	CHANGED: syntax of grammar statements, which now require an 'in'
+	clause.  This was done to accommodate future enhancements to the RPL
+	language.  The RPL version level is now 1.2.
+
+	NEW: ~/.rosierc is processed if found, unless the --norcfile option is
+	given.  And the --rcfile option can be used to load a different
+	initialization file.
+
+	NEW: --colors <str> option to define which colors to use when printing
+	colorized output.
+
+	ENHANCED: Previously, the REPL did not interpolate strings entered as
+	sample data.  Now, escape sequences like \n, \xAA, and the Unicode
+	escape sequences can be used in sample data.
+
+	ENHANCED: The "standard prelude" can be imported like any other
+	package.
+
+	CHANGED: The config() API now returns an array of JSON objects, where
+	each object is a table of configuration settings.  The first is for the
+	rosie installation, the second for the engine specifically, and the last,
+	if present, is a table of output encoder parameters.
+
+2018-02-03  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-10
+
+	NEW: output encoder 'jsonpp' (json pretty printing)
+
+	NEW: additional sample docker file 'ubuntu-go', which installs golang,
+	and then builds and tests the go client of librosie.
+
+	UPDATED: Most of the docs are now up to date.  Please open an issue if
+	you find an error.
+
+	FIXED: a bug in error printing at the command line.
+
+2018-01-20  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-9
+
+	NEW: Unicode patterns in rpl/Unicode for each Unicode script, block,
+	general category, word|line|sentence|grapheme break, numeric type, and
+	(binary) property.
+	  * Limitation: Unicode aliases are not yet supported, so you cannot
+	    write, e.g. "Category.Uppercase_Letter".  You have to use the
+	    official short name, "Category.Lu".
+	  * Limitation: The RPL compiler is slow, particularly on long
+	    (automatically generated) patterns like the ones in
+	    rpl/Unicode/Category.rpl.  Some planned refactoring will result in
+	    all the Unicode patterns being pre-compiled, meaning that they can
+	    be loaded in binary form from disk when needed.
+	  * Future: A user should be able to download any Unicode Character
+	    Database from http://unicode.org and run a rosie utility to generate
+	    patterns.  Today, we support only Unicode 10.0.0.
+
+	NEW: A working Go client of librosie, in src/librosie/go/rosie/rosie.go
+
+	BREAKING CHANGE: CLI option "--version" to a command "version".
+
+	BREAKING CHANGE: The librosie functions now return a NULL pointer for
+	"messages" when there are none, instead of a string representation of an
+	empty JSON object.
+
+	BREAKING CHANGE: The librosie APIs for alloc_limit and libpath changed.
+
+	BREAKING CHANGE (in theory): Rosie is now completely independent of the
+	operating system's locale system.  If you ever wrote patterns using,
+	e.g. [:alpha:] and counted on the meaning to change when you changed
+	your OS locale setting, then please OPEN AN ISSUE.  Rosie can certainly
+	support this capability (in a portable way), but doing so is not a known
+	requirement at this time.
+
+	CHANGED: CLI now prints error messages to stderr, not stdout.
+
+	CHANGED: Packages "list"ed now show the file from which they were loaded.
+
+	CHANGED: The output of the test command now includes the *full* filename.
+
+	CHANGED: Sample docker files now force re-build when the branch has
+	changed.  This is a hack, and it relies on (1) the extra/docker/run
+	script, and (2) access by that script to the .git directory in the rosie
+	build directory.
+
+	CHANGED: The Lua repl, which is used for white-box testing and
+	debugging, is now optional instead of always present.  Compile with
+	"make LUADEBUG=1" to get the Lua repl, and to use it, invoke rosie with
+	"rosie -D".
+
+	CHANGED: The symbols in librosie.[so|dylib] are now hidden, except of
+	course for the functions rosie_* that the library exports.
+
+	REMOVED: "make installtest" (until we decide on a good way to implement
+	tests of the system installation of rosie).
+
+	CHANGED: the rosie executable into a single statically linked binary,
+	instead of a script.
+
+	CHANGED: Now, librosie.a|so|dylib will look for the rosie files
+	(lib/*.luac, rpl/*) in one fixed location in the file system, and that
+	location is compiled in.  Any location could be specified, but the
+	Makefile knows how to generate two versions:
+	  * local, which looks for rosie in the root of the build directory
+	  * system, which looks for rosie in DESTDIR (defaults to /usr/local)
+	This affects anything built with librosie, which now includes the rosie
+	CLI.
+
+	CHANGED: librosie is itself now statically linked.  It no longer loads
+	any dynamic libraries.  As a result, there are no longer any so|dylib
+	files in the lib directory, and the only libraries that are installed
+	via "make install" are librosie.a and librosie.so|dylib.
+
+	FIXED: a subtle bug which revealed that, on some linux variants, dlopen
+	caches (at least the) dli.fname value.  Discovered this after learning
+	that basename/dirname may change their (char *) argument.  This seems
+	like a security hole, and we should dig into it.  Fortunately, it no
+	longer affects Rosie, since we no longer utilize dli.fname.
+
+	NEW: rpl/builtin/prelude.rpl and the rpl/builtin dir.
+
+	CHANGED: Removed support for 5,6-byte UTF-8 since those are deprecated.
+
+	CHANGED: Removed "halt" (which was undocumented) from standard prelude.
+
+	CHANGED: The multi-threaded test program now writes output files to /tmp.
+
+	FIXED: Tracing now works on built-in definitions.
+
+	FIXED: When the CLI auto-import fails, it now does so silently, because
+	the user may have used other means to ensure that packages are loaded,
+	such as an import statement on the command line.
+
+2018-01-05  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-8
+
+	NEW: The "fancy" new character set support is ready for users to try
+	out.  Expressions are now allowed within square brackets.  The new
+	operator & is useful here, since it provides short notation for set
+	intersection.  Examples:
+	[[A-Z] & [A-F]] is equivalent to [A-F];
+	[[ \t] comment] is equivalent to {[ \t] / comment};
+	[comment] is a syntax error; it is interpreted as a character list, and
+	it has a duplicate character ("m");
+	[cmt] is a character list matching "c", "m", and "t";
+	[[] cmt] is equivalent to pattern cmt;
+	[[] p1 p2] is equivalent to {p1 / p2};
+	[] matches nothing (it is a disjunction of zero characters);
+	[^] matches everything (it is the complement of []);
+
+	NEW: A couple of scripts that count source lines of code were added in
+	the extra/examples directory.
+
+	NEW: Three kinds of new escape sequences are supported.  They are valid
+	in literal strings (in double quotes) and in character lists/ranges (in
+	square brackets).  They are:
+	\xHH  hex escape; HH are hex digits; range \x00-\xFF
+	\uHHHH  unicode escape; 4 hex digits; range \u0000-\uFFFF
+	\UHHHHHHHH  long unicode escape; 8 hex digits; range \U00000000-\U0010FFFF
+	Note that the hex digits may be upper or lower case.
+
+	NEW: Every part of Rosie should now be Unicode-aware, as long as the
+	encoding of the input data is UTF-8.
+
+	CHANGED: Unfortunately, this is a change that can BREAK EXISTING CODE.
+	Character lists like [abc] and ranges like [a-z] now enforce these two
+	rules:
+	(1) To include these characters, they MUST be escaped: [ ] ^ -
+	For example, [+\-] matches + and -, and [^\^] matches anything but ^.
+	(2) In a range, the ends of the range MUST be in order.  So [a-z] is
+	legal, but [z-a] is not.
+
+	FIXED: The "make install" command now copies liblua.5.3.so/dylib into
+	the destination directory, alongside librosie.so/dylib.
+
+	FIXED: Bug in the repl command ".load" introduced in the previous
+	release.
+
+	FIXED: The dot "." is intended to match any unicode character, or,
+	failing that, a single non-character byte.  It did not match a
+	non-character byte until this fix.
+
+	FIXED: Default compiler is cc (clang) on OS X.  Use
+	"make CC=gcc" to force gcc.
+
+2017-12-22  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-7
+
+	CHANGED: The rosie configuration returned by rosie_config() in librosie
+	now has a more simple structure.  It is a list of entries, each of which
+	contains a name, description, value, and possibly other attributes.
+
+	CHANGED: The sample Go client remains unfinished.  The part that is
+	implemented only works because the main goroutine is locked to the OS
+	thread.  Without this, the tiny stacks allocated by Go cause problems
+	for goroutines that use librosie.
+
+	CHANGED: librosie now provides rosie_loadfile.
+
+	FIXED: REPL engine now gets the libpath set on the command line (if any).
+
+	FIXED: Violation messages returned by librosie now have internal data
+	stripped away, leaving only text that is useful to a librosie client.
+
+	CHANGED: librosie now requires pthreads to compile.
+
+	CHANGED: Now building librosie.dylib on OS X because .dylib and .so
+	files are treated differently by Python's cffi package (grrrr).
+
+	NEW: There are now 3 sample clients for librosie that are written in C:
+	one statically linked, one dynamically linked, and one statically linked
+	and multi-threaded.  See src/librosie/C/Makefile ("test" target) for how
+	to invoke each one.
+
+	INFO: Some future changes may be coming to how librosie is built.  Today
+	it links with lua.5.3.so in the same directory, which can complicate
+	'make install'.
+
+	CHANGED: In librosie, the signature of rosie_import changed to provide
+	an additional "output arg" that contains the name of the package
+	actually imported.
+
+	NEW: The customized version of lpeg that rosie uses has been modified to
+	never read past the end of the input string.  It would peek beyond the
+	end by one char, which caused no harm when the input was a string
+	produced by lua_tolstring, which guarantees a null terminator.  In
+	Rosie, the input can be a "pointer and length" struct, where it is
+	incorrect to reference the char at the address pointer+length.
+
+	NEW: librosie is now thread-safe.  Example program in
+	src/librosie/C/mt.c.  The required stack size for a thread running a
+	rosie matching engine is currently 1MB.  Some implementation changes
+	could reduce this, possibly down to 512KB.  If you would like to see
+	this, please open an issue on Github.
+
+	FIXED: Updated docker files in extra/docker to reflect best practices
+	and to run all librosie client tests.
+
+2017-11-25  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-6
+
+	FIXED: Unreported bug where the "rosie list" command did not show the
+	correct colors in the table of patterns.
+
+	CHANGED: The names of the platform-specific MAC patterns in net.rpl.
+	THIS COULD BREAK EXISTING RPL CODE, which is why it's happening now, in
+	an alpha release.
+
+	CHANGED: With implementation of Issue #68, the "text" output encoder was
+	renamed "matches" (to be analogous to "subs"), and the "nocolor" option
+	was removed because it's now redundant.
+
+	NEW: Makefile now builds librosie.a in addition to librosie.so.
+
+	NEW: Issue #68 implemented.  Color output now prints the entire input
+	line, with match segments in color.  When no color is defined for a
+	match, the default is a bold version of the default shell color.
+
+	NEW: Started working on a Go client for librosie, but it's not done.
+
+
+2017-11-14  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-5
+
+	MERGED PR #67 (from IBMer vmorris) containing a fix to a link in the
+	docs.
+
+	FIXED: Issue #69 (bug in how find/findall handle tokenized sequences)
+
+	MISC:
+	Output encoder "subs" now omits items that have no subs
+	CLI failed to print compile errors occasionally
+
+	NEW: librosie client programs now in their own directories within src/librosie
+	NEW: 'make test' now takes optional CLIENTS arg, e.g. CLIENTS="c python"
+	NEW: Enhancements (incl 'loadfile') to rosie.py
+	NEW: Two sample C clients written (work in progress), one for static
+	linking with librosie.o, and one for dynamic linking with librosie.so
+
+
+2017-10-26  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-4
+
+	FIXED: Prior change log entry (in this file) was labeled alpha-2 when it
+	should have been alpha-3.
+
+	FIXED: Issue #65 where RPL files containing carriage returns (DOS-style
+	line endings) were rejected.
+
+	ENHANCED: A maximum of 99 syntax errors are reported when loading RPL
+	code.  Otherwise, it can take a long time for all the error reports to
+	be generated when loading a random (non-RPL) file.
+
+	FIXED: Added necessary reporting of an error when RPL code tries to bind
+	an imported identifier (e.g. 'word.any' as opposed to 'any').
+
+	NEW: "Dark launch" of enhanced character set expressions, in which
+	identifiers and other RPL expressions can appear.  E.g.
+	'[ "Hi" [:alpha:] num.int ]' will match the two-character string "Hi", a
+	single alpha character, or an integer (from the num package).
+	Restriction: there must be at least one bracket subexpression, which in
+	the example is '[:alpha:]'.  This feature should be considered
+	EXPERIMENTAL.
+
+	NEW: Sample docker files.  (We use these for testing, and thought we
+	would share them.)
+
+
+2017-10-23  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-3
+
+	FIXED: Bug triggered by multiple import statements in a single rpl file,
+	where the error message did not print and some imports did not load.
+
+	ENHANCED: To accomodate patterns that contain many thousands of
+	alternatives, the maximum number of captures handled by the lpeg vm has
+	been increased to 1 million.  It can go higher, but should it?
+
+	NEW: "Dark launch" of a new operator called 'and', bound to the
+	ampersand, e.g.  A & B & C === >A >B C which means "the input matches A
+	and B and C, and the capture will be done using pattern C".
+
+2017-10-22  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-2
+
+	NEW: Python module (librosie.so, rosie.py)
+
+	NEW: Tests of some basic macros (halt, message, find, findall, and a
+	shallow version of the case-insensitive macro called ci
+
+	Note: The halt pattern is implemented, but the abend status of an
+	attempted match is not yet available to the user.  I.e. the halt pattern
+	is not very useful yet.
+
+	Note: Memory management in librosie has been carefully designed,
+	e.g. buffers are reused whenever possible.  BUT testing with a tool like
+	valgrind has not been done yet.
+
+	Modified: Backtracking limit for a single pattern is now 1000 (was 400)
+
+	CHANGED: the find macro now looks for a cooked exp and adds boundary
+	patterns automatically
+
+	FIXED: bug in REPL (when entering rpl language declaration, e.g. 'rpl 1.0')
+
+	FIXED: issue #63 (typo in README)
+
+2017-09-20  Jamie Jennings  <jjennings@us.ibm.com>
+
+	* 1.0.0-alpha-1
+
+	First release under semantic versioning.
+
+
+
+

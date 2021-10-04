@@ -1,0 +1,28 @@
+FROM fedora:32
+ARG branch
+
+RUN dnf -y update && dnf install -y \
+  gcc \
+  git \
+  make \
+  findutils \
+  readline-devel \
+  libbsd \
+  libbsd-devel
+
+# This COPY is designed to trigger re-running the git clone when the repo changes.
+COPY githead-$branch /opt/githead-$branch
+RUN git clone --depth 1 --branch $branch https://gitlab.com/rosie-pattern-language/rosie.git /opt/rosie
+
+WORKDIR /opt/rosie
+RUN make LUADEBUG=1
+RUN make test
+RUN make clean; make
+RUN make install
+
+# A couple of small tests to ensure the installed copy functions:
+RUN rosie version
+RUN rosie match all.things test/resolv.conf
+
+RUN uname -a
+RUN cat /etc/fedora-release
