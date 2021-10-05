@@ -1,10 +1,15 @@
 
-use std::fs; // Used to copy the C headers
+//Depending on the Cargo features, some parts of this file are not run
+#![allow(dead_code)]
+#![allow(unreachable_code)]
 
+use std::fs; // Used to copy the C headers
 use std::path::{PathBuf, Path};
 
-extern crate pkg_config;
 extern crate cc;
+
+#[cfg(feature = "link_shared_librosie")]
+extern crate pkg_config;
 
 //TODO: Test on Windows.  I suspect it won't work, and I may need to follow the example from Teseract,
 //  using the vcpkg crate, here:
@@ -12,10 +17,20 @@ extern crate cc;
 
 fn main() {
 
+    //If both or neither "build-mode" features are specified then it's an error
+    #[cfg(all(feature = "link_shared_librosie", feature = "build_static_librosie"))]
+    {
+        panic!("Error: both link_shared_librosie and build_static_librosie are specified");
+    }
+    #[cfg(not(any(feature = "link_shared_librosie", feature = "build_static_librosie")))]
+    {
+        panic!("Error: either link_shared_librosie or build_static_librosie must be specified");
+    }
+
     //See if we're linking a shared librosie
     #[cfg(feature = "link_shared_librosie")]
     {
-        //First, see if we can locate the library using pkg_config
+        //First, see if we canc locate the library using pkg_config
         let librosie = pkg_config::Config::new()
             .cargo_metadata(true)
             .print_system_libs(true)
@@ -36,7 +51,7 @@ fn main() {
     }
 
     //If we're not linking the shared lib, then we're building a private copy
-    #[cfg(not(feature = "link_shared_librosie"))]
+    #[cfg(feature = "build_static_librosie")]
     {
         //Build librosie from source
         if librosie_src_build() {
@@ -51,7 +66,6 @@ fn main() {
 
 //If we haven't found it using one of the pkg trackers, try to compile the smoke.c file to "smoke it out"
 //Thanks to the zlib crate for this idea:  https://github.com/rust-lang/libz-sys/blob/main/build.rs
-#[allow(dead_code)] //Depending on the Cargo features, sometimes this function isn't called
 fn librosie_installed() -> bool {
 
     let smoke_file : PathBuf = ["src", "smoke.c"].iter().collect();
@@ -80,7 +94,6 @@ fn librosie_installed() -> bool {
 // I think I'll choose 1, because it's the devil I know.  In other words, I don't know what I don't know about
 //  possible configs this might end up needing to run on.  But in the case of 1., I can verify that everything
 //  is building as expected.
-#[allow(dead_code)] //Depending on the Cargo features, sometimes this function isn't called
 fn librosie_src_build() -> bool {
 
     //Incoming from Cargo
@@ -302,7 +315,7 @@ fn librosie_src_build() -> bool {
 
 
     //GOAT, NEED to write a README file detailing every component that I harvested from the main Rosie repo
-    //  GOAT, Document the link_shared_librosie Cargo feature.  2 ways to use this crate.
+    //  GOAT, Document the link_shared_librosie & build_static_librosie Cargo features.  2 ways to use this crate.
     //  GOAT, Document the DEP_ROSIE_INCLUDE and DEP_ROSIE_LIB env vars, but only if link_shared_librosie is not set
 
     //GOAT, Look at fixing the warnings caused by lua-cjson
