@@ -176,12 +176,14 @@ impl LibRosieTraceFormat for TraceFormat {
 
 /// A pointer to a Rosie engine.  
 /// 
+/// EnginePtr should NOT be re-exported as it contains no safe interfaces
+/// 
 /// **NOTE**: RosieEngines are not internally thread-safe, but you may create more than one RosieEngine in order to use multiple threads.
 /// **NOTE**: Cloning / Copying this ptr type does not copy the engine, just the reference to the engine.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct EnginePtr<'a> {
-    e: *mut c_void, //This pointer really has a lifetime of 'a, hence the phantom
+    pub e: *mut c_void, //This pointer really has a lifetime of 'a, hence the phantom
     phantom: PhantomData<&'a u8>,
 }
 

@@ -322,8 +322,6 @@ fn librosie_src_build() -> bool {
 
     //GOAT, in the rosie-rs crate, check the ROSIE_HOME_DIR environment variable when we load a new engine with the defaults (i.e. without explicitly specifying a lib)
 
-    //GOAT, Confirm that I can override set the "link_shared_librosie" from an app that depends on rosie-rs
-
     true
 }
 
