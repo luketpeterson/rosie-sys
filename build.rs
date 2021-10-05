@@ -70,6 +70,7 @@ fn librosie_installed() -> bool {
 
     let smoke_file : PathBuf = ["src", "smoke.c"].iter().collect();
     let mut cfg = cc::Build::new();
+    cfg.cargo_metadata(false);
     cfg.file(smoke_file);
     if cfg.try_compile("smoke").is_ok() {
         return true;
@@ -318,6 +319,8 @@ fn librosie_src_build() -> bool {
     //  GOAT, Document the link_shared_librosie & build_static_librosie Cargo features.  2 ways to use this crate.
     //  GOAT, Document the DEP_ROSIE_INCLUDE and DEP_ROSIE_LIB env vars, but only if link_shared_librosie is not set
     //  GOAT, mention "--features build_static_librosie" can be used as a cargo arg, if you want to test this crate
+
+    // GOAT, in rosie-rs, we can run the tests like this:  cargo test --features rosie-sys/build_static_librosie
 
     //GOAT, Look at fixing the warnings caused by lua-cjson
 
