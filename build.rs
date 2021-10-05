@@ -15,34 +15,46 @@ extern crate cc;
 
 fn main() {
 
-    //First, see if we can locate the library using pkg_config
-    let librosie = pkg_config::Config::new()
+    //See if we're linking a shared librosie
+    #[cfg(feature = "link_shared_librosie")]
+    {
+        //First, see if we can locate the library using pkg_config
+        let librosie = pkg_config::Config::new()
             .cargo_metadata(true)
             .print_system_libs(true)
             .probe("rosie");
-    if librosie.is_ok() {
-        //pkg_config should output the necessary output for cargo
-        return;
+        if librosie.is_ok() {
+            //pkg_config should output the necessary output for cargo
+            return;
+        }
+
+        //If pkg_config didn't find librosie, try one more time to see if it's installed by trying to build something that links it
+        if librosie_installed() {
+            println!("cargo:rustc-link-lib=rosie");
+            return;
+        }
+
+        //We got here because we failed to find an existing librosie
+        panic!("Error: link_shared_librosie specified, but librosie couldn't be found");
     }
 
-    //If pkg_config didn't find librosie, try one more time to see if it's installed by trying to build something that links it
-    if librosie_installed() {
-        println!("cargo:rustc-link-lib=rosie");
-        return;
-    }
+    //If we're not linking the shared lib, then we're building a private copy
+    #[cfg(not(feature = "link_shared_librosie"))]
+    {
+        //Build librosie from source
+        if librosie_src_build() {
+            println!("cargo:rustc-link-lib=rosie");
+            return;
+        }
 
-    //If it's not installed on the system, build librosie from source
-    if librosie_src_build() {
-        println!("cargo:rustc-link-lib=rosie");
-        return;
+        //We got here because we failed to find or build librosie.
+        panic!("Error: librosie build failure");
     }
-
-    //We got here because we failed to find or build librosie.
-    panic!("Build Failure: librosie couldn't be found or built");
 }
 
 //If we haven't found it using one of the pkg trackers, try to compile the smoke.c file to "smoke it out"
 //Thanks to the zlib crate for this idea:  https://github.com/rust-lang/libz-sys/blob/main/build.rs
+#[allow(dead_code)] //Depending on the Cargo features, sometimes this function isn't called
 fn librosie_installed() -> bool {
 
     //GOAT, Convert this to use cc, so we don't need to import Command, and convert this to use
@@ -79,6 +91,7 @@ fn librosie_installed() -> bool {
 // I think I'll choose 1, because it's the devil I know.  In other words, I don't know what I don't know about
 //  possible configs this might end up needing to run on.  But in the case of 1., I can verify that everything
 //  is building as expected.
+#[allow(dead_code)] //Depending on the Cargo features, sometimes this function isn't called
 fn librosie_src_build() -> bool {
 
     //Incoming from Cargo
@@ -86,6 +99,7 @@ fn librosie_src_build() -> bool {
     let out_dir = PathBuf::from(std::env::var_os("OUT_DIR").unwrap());
 
     //The build products
+    let rosie_lib_dir = out_dir.clone(); //cc's default is to put the build lib in the out_dir, and that's fine with us
     let rosie_include_dir = out_dir.join("include");
     let rosie_home_dir = out_dir.join("rosie_home");
 
@@ -291,29 +305,23 @@ fn librosie_src_build() -> bool {
     for include_file in &["librosie.h"] {
         fs::copy(rosie_include_src_dir.join(include_file), rosie_include_dir.join(include_file)).unwrap();
     }
+    //Tell cargo how to set `DEP_ROSIE_INCLUDE`
     println!("cargo:include={}", rosie_include_dir.display());
 
-
-    //GOAT this is what I need to output
-    // 
-    // println!("cargo:lib={}", self.lib_dir.display());
+    //Tell cargo so anyone who depends on this crate can find our lib.  I.e. so cargo will set `DEP_ROSIE_LIB` 
+    println!("cargo:lib={}", rosie_lib_dir.display());
 
 
-
-    //GOAT NEED TO clean up trash comments throughout this file 
-    //GOAT NEED TO output the line that tells the crates that depend on this C lib where to find it 
-
-    //GOAT, NEED To Bundle the C Rosie headers, and export the env var to access them.
     //GOAT, NEED to write a README file detailing every component that I harvested from the main Rosie repo
     //  GOAT, Document that I use the installed rosie if it exists.
+    //  GOAT, Document the DEP_ROSIE_INCLUDE and DEP_ROSIE_LIB env vars
+    //  GOAT, Document the link_shared_librosie Cargo feature
     //GOAT, NEED to test to see if I get a reasonable error (i.e. if the build falls through to my "can't find or build rosie" message, or just panics.)
     //  If I figure out how to make CC not panic, then get rid of the CMD invocation, and instead use CC to build smoke
 
     //GOAT, Look at fixing the warnings caused by lua-cjson
 
-    //GOAT, Make a Cargo Feature to specify building (with static linking) or dynamic linking
-
-    //GOAT, in the rosie-rs crate, check the ROSIE_LIB_PATH environment variable when we load a new engine with the defaults (i.e. without explicitly specifying a lib)
+    //GOAT, in the rosie-rs crate, check the ROSIE_HOME_DIR environment variable when we load a new engine with the defaults (i.e. without explicitly specifying a lib)
     
     true
 }
