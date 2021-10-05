@@ -1,7 +1,4 @@
 
-//GOAT, Try to the cc compiler directly, using cc::Build::try_compile
-use std::process::Command;
-
 use std::fs; // Used to copy the C headers
 
 use std::path::{PathBuf, Path};
@@ -57,19 +54,11 @@ fn main() {
 #[allow(dead_code)] //Depending on the Cargo features, sometimes this function isn't called
 fn librosie_installed() -> bool {
 
-    //GOAT, Convert this to use cc, so we don't need to import Command, and convert this to use
-    //  PathBuf so we can at least be theoretically safe on Windows
-
-    let cfg = cc::Build::new();
-    let compiler = cfg.get_compiler();
-    let mut cmd = Command::new(compiler.path());
-    cmd.arg("src/smoke.c").arg("-o").arg("/dev/null").arg("-lrosie").arg("-lz");
-
-    println!("running {:?}", cmd);
-    if let Ok(status) = cmd.status() {
-        if status.success() {
-            return true;
-        }
+    let smoke_file : PathBuf = ["src", "smoke.c"].iter().collect();
+    let mut cfg = cc::Build::new();
+    cfg.file(smoke_file);
+    if cfg.try_compile("smoke").is_ok() {
+        return true;
     }
 
     false
@@ -313,16 +302,15 @@ fn librosie_src_build() -> bool {
 
 
     //GOAT, NEED to write a README file detailing every component that I harvested from the main Rosie repo
-    //  GOAT, Document that I use the installed rosie if it exists.
-    //  GOAT, Document the DEP_ROSIE_INCLUDE and DEP_ROSIE_LIB env vars
-    //  GOAT, Document the link_shared_librosie Cargo feature
-    //GOAT, NEED to test to see if I get a reasonable error (i.e. if the build falls through to my "can't find or build rosie" message, or just panics.)
-    //  If I figure out how to make CC not panic, then get rid of the CMD invocation, and instead use CC to build smoke
+    //  GOAT, Document the link_shared_librosie Cargo feature.  2 ways to use this crate.
+    //  GOAT, Document the DEP_ROSIE_INCLUDE and DEP_ROSIE_LIB env vars, but only if link_shared_librosie is not set
 
     //GOAT, Look at fixing the warnings caused by lua-cjson
 
     //GOAT, in the rosie-rs crate, check the ROSIE_HOME_DIR environment variable when we load a new engine with the defaults (i.e. without explicitly specifying a lib)
-    
+
+    //GOAT, Confirm that I can override set the "link_shared_librosie" from an app that depends on rosie-rs
+
     true
 }
 
