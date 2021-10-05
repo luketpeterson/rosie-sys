@@ -290,6 +290,18 @@ impl RawMatchResult<'_> {
     }
 }
 
+/// Returns the path to a rosie_home dir, that is valid at the time the rosie-sys crate is built
+/// 
+/// The purpose of this function is so that a rosie-rs crate can operate without needing to be configured on
+/// systems where the rosie_home dir isn't installed.  This is not a substitute for installing the
+/// rosie_home dir in a more appropriate location
+///
+/// TODO: In the future, we should embed the CONTENTS of the rosie_home into the binary, not just the path
+pub fn rosie_home_default() -> Option<&'static str> {
+
+    option_env!("ROSIE_HOME_DIR")
+}
+
 //Interfaces to the raw librosie functions
 //NOTE: Not all interfaces are imported by the Rust driver
 //NOTE: The 'static lifetime in the returned values is a LIE! The calling code needs to assign the lifetimes appropriately
@@ -356,15 +368,11 @@ fn librosie() {
     // This is NOT a good template to use for proper use of Rosie.  You relly should
     // use the rosie-rs crate to call Rosie from Rust.
 
-    //Init the Rosie home directory, if we have the ROSIE_HOME_DIR env var
+    //Init the Rosie home directory, if we have the rosie_home_default()
     let mut message_buf = RosieString::empty();
-    let rosie_home_dir = if let Ok(home_dir_env) = std::env::var("ROSIE_HOME_DIR") {
-        let rosie_home_dir = RosieString::from_str(&home_dir_env);
-        unsafe{ rosie_home_init(&rosie_home_dir, &mut message_buf) };
-        Some(home_dir_env)
-    } else {
-        None
-    };
+    if let Some(rosie_home_dir) = rosie_home_default() {
+        unsafe{ rosie_home_init(&RosieString::from_str(&rosie_home_dir), &mut message_buf) };
+    }
 
     //Create the rosie engine with rosie_new
     let engine = unsafe { rosie_new(&mut message_buf) };
@@ -373,10 +381,9 @@ fn librosie() {
     let mut path_rosie_string = RosieString::empty();
     let result_code = unsafe { rosie_libpath(engine, &mut path_rosie_string) };
     assert_eq!(result_code, 0);
-    if let Some(rosie_home_dir) = rosie_home_dir {
+    if let Some(rosie_home_dir) = rosie_home_default() {
         assert_eq!(path_rosie_string.as_str(), format!("{}/rpl", rosie_home_dir));
     }
-
 
     //Compile a valid rpl pattern, and confirm there is no error
     let mut pat_idx : i32 = 0;

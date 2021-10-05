@@ -300,7 +300,9 @@ fn librosie_src_build() -> bool {
         fs::copy(rosie_home_src_dir.join(file), dest_path).unwrap();
     }
 
-    //Set the env variable so we'll be able to find the copy of the rosie_home in the build output
+    //Set the env variable that we'll use to communicate the location of the rosie_home dir, to embed in the return value
+    //for the rosie_home_default call.  This is inelegant, but should work for now.
+    //TODO: In the future, we should embed the CONTENTS of the rosie_home into the binary, not just the path
     println!("cargo:rustc-env=ROSIE_HOME_DIR={}", rosie_home_dir.display());
     
     //Copy the rosie header file(s) so anyone who needs to use this crate for a C dependency build against it
