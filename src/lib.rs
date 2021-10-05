@@ -88,6 +88,42 @@ impl RosieString<'_> {
     }
 }
 
+/// An error code from a Rosie operation 
+#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+pub enum RosieError {
+    /// No error occurred.
+    Success = 0,
+    /// An unknown error occurred.
+    MiscErr = -1,
+    /// The Rosie Engine could not allocate the needed memory, either because the system allocator failed or because the limit
+    /// set by [set_mem_alloc_limit](RosieEngine::set_mem_alloc_limit) was reached.  See [set_mem_alloc_limit](RosieEngine::set_mem_alloc_limit),
+    /// [mem_alloc_limit](RosieEngine::mem_alloc_limit), and [mem_usage](RosieEngine::mem_usage) for more details.
+    OutOfMemory = -2,
+    /// A system API call failed.
+    SysCallFailed = -3,
+    /// A failure occurred in the `librosie` engine.
+    EngineCallFailed = -4,
+    /// An error related to a pattern input has occurred, for example, an `rpl` syntax error.
+    PatternError = -1001,
+    /// An error related to a package input has occurred, for example a missing package or `.rpl` file,
+    /// a missing package declaration in the file, or another syntax error in the package.rpl file.
+    PackageError = -1002,
+    /// An invalid argument was passed to a rosie function.
+    ArgError = -1003,
+}
+
+impl RosieError {
+    pub fn from(code: i32) -> Self {
+        match code {
+            0 => RosieError::Success,
+            -2 => RosieError::OutOfMemory,
+            -3 => RosieError::SysCallFailed,
+            -4 => RosieError::EngineCallFailed,
+            _ => RosieError::MiscErr
+        }
+    }
+}
+
 /// An Encoder Module used to format the results, when using [match_pattern_raw](RosieEngine::match_pattern_raw).
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum MatchEncoder {
