@@ -317,6 +317,7 @@ fn librosie_src_build() -> bool {
     //GOAT, NEED to write a README file detailing every component that I harvested from the main Rosie repo
     //  GOAT, Document the link_shared_librosie & build_static_librosie Cargo features.  2 ways to use this crate.
     //  GOAT, Document the DEP_ROSIE_INCLUDE and DEP_ROSIE_LIB env vars, but only if link_shared_librosie is not set
+    //  GOAT, mention "--features build_static_librosie" can be used as a cargo arg, if you want to test this crate
 
     //GOAT, Look at fixing the warnings caused by lua-cjson
 

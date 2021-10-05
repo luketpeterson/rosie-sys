@@ -356,20 +356,27 @@ fn librosie() {
     // This is NOT a good template to use for proper use of Rosie.  You relly should
     // use the rosie-rs crate to call Rosie from Rust.
 
-    //Init the Rosie home directory
+    //Init the Rosie home directory, if we have the ROSIE_HOME_DIR env var
     let mut message_buf = RosieString::empty();
-    let rosie_lib_path = RosieString::from_str(env!("ROSIE_HOME_DIR")); //GOAT, This might break if the build script found the lib and therefore didn't build it and set this env var
-    unsafe{ rosie_home_init(&rosie_lib_path, &mut message_buf) };
+    let rosie_home_dir = if let Ok(home_dir_env) = std::env::var("ROSIE_HOME_DIR") {
+        let rosie_home_dir = RosieString::from_str(&home_dir_env);
+        unsafe{ rosie_home_init(&rosie_home_dir, &mut message_buf) };
+        Some(home_dir_env)
+    } else {
+        None
+    };
 
     //Create the rosie engine with rosie_new
     let engine = unsafe { rosie_new(&mut message_buf) };
 
-    //Check the libpath is relative to the directory we set
+    //Check the libpath is relative to the directory we set, if we set a path
     let mut path_rosie_string = RosieString::empty();
     let result_code = unsafe { rosie_libpath(engine, &mut path_rosie_string) };
-println!("GOAT Current libpath: {}", path_rosie_string.as_str());
-    assert_eq!(path_rosie_string.as_str(), format!("{}/rpl", rosie_lib_path.as_str()));
     assert_eq!(result_code, 0);
+    if let Some(rosie_home_dir) = rosie_home_dir {
+        assert_eq!(path_rosie_string.as_str(), format!("{}/rpl", rosie_home_dir));
+    }
+
 
     //Compile a valid rpl pattern, and confirm there is no error
     let mut pat_idx : i32 = 0;
