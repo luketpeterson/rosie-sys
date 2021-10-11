@@ -15,16 +15,19 @@ extern crate pkg_config;
 //  using the vcpkg crate, here:
 //https://github.com/ccouzens/tesseract-sys/blob/master/build.rs
 
-fn main() {
+fn main() -> Result<(), i32> {
 
     //If both or neither "build-mode" features are specified then it's an error
     #[cfg(all(feature = "link_shared_librosie", feature = "build_static_librosie"))]
     {
-        panic!("Error: both link_shared_librosie and build_static_librosie are specified");
+        // println!("cargo:warning=Error: both link_shared_librosie and build_static_librosie are specified");
+        println!("Error: both link_shared_librosie and build_static_librosie are specified");
+        return Err(-1);
     }
     #[cfg(not(any(feature = "link_shared_librosie", feature = "build_static_librosie")))]
     {
-        panic!("Error: either link_shared_librosie or build_static_librosie must be specified");
+        println!("Error: either link_shared_librosie or build_static_librosie must be specified");
+        return Err(-1);
     }
 
     //See if we're linking a shared librosie
@@ -37,17 +40,18 @@ fn main() {
             .probe("rosie");
         if librosie.is_ok() {
             //pkg_config should output the necessary output for cargo
-            return;
+            return Ok(());
         }
 
         //If pkg_config didn't find librosie, try one more time to see if it's installed by trying to build something that links it
         if librosie_installed() {
             println!("cargo:rustc-link-lib=rosie");
-            return;
+            return Ok(());
         }
 
         //We got here because we failed to find an existing librosie
-        panic!("Error: link_shared_librosie specified, but librosie couldn't be found");
+        println!("Error: link_shared_librosie specified, but librosie couldn't be found");
+        return Err(-1);
     }
 
     //If we're not linking the shared lib, then we're building a private copy
@@ -56,11 +60,12 @@ fn main() {
         //Build librosie from source
         if librosie_src_build() {
             println!("cargo:rustc-link-lib=rosie");
-            return;
+            return Ok(());
         }
 
         //We got here because we failed to find or build librosie.
-        panic!("Error: librosie build failure");
+        println!("Error: librosie build failure");
+        return Err(-1);
     }
 }
 
@@ -322,11 +327,9 @@ fn librosie_src_build() -> bool {
     //  GOAT, Document the DEP_ROSIE_INCLUDE and DEP_ROSIE_LIB env vars, but only if link_shared_librosie is not set
     //  GOAT, mention "--features build_static_librosie" can be used as a cargo arg, if you want to test this crate
 
-    // GOAT, in rosie-rs, we can run the tests like this:  cargo test --features rosie-sys/build_static_librosie
+    // GOAT, in rosie-rs, also mention that we can run the tests like this:  cargo test --features build_static_librosie or --features link_shared_librosie
 
     //GOAT, Look at fixing the warnings caused by lua-cjson
-
-    //GOAT, in the rosie-rs crate, check the ROSIE_HOME_DIR environment variable when we load a new engine with the defaults (i.e. without explicitly specifying a lib)
 
     true
 }
