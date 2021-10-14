@@ -53,6 +53,7 @@
 #include <errno.h>
 #include <sys/param.h>		/* MAXPATHLEN */
 #include <pthread.h>
+#include <stdatomic.h>
 
 #include "rpeg.h"
 #include "librosie.h"
@@ -125,7 +126,7 @@ static void check_type(const char *thing, int t, int expected) {
  * ----------------------------------------------------------------------------------------
  */
 
-static int set_bootscript(str *home_dir_arg) {
+static int set_bootscript(str *rosie_home_arg) {
   int remaining;
   size_t rosie_home_len, bootscript_len;
   static char *last, *install_filename, *real_install_filename, *real_install_dir;
@@ -135,11 +136,11 @@ static int set_bootscript(str *home_dir_arg) {
   last = tmp;
   remaining = MAXPATHLEN - 1;
 
-  if (home_dir_arg) {
+  if (rosie_home_arg) {
 
     //Copy the path from the argument we were passed to the tmp buffer
-    int cpy_len = MAXPATHLEN-1 < home_dir_arg->len ? MAXPATHLEN-1 : home_dir_arg->len;
-    strncpy(tmp, home_dir_arg->ptr, cpy_len);
+    int cpy_len = MAXPATHLEN-1 < rosie_home_arg->len ? MAXPATHLEN-1 : rosie_home_arg->len;
+    strncpy(tmp, (char*)rosie_home_arg->ptr, cpy_len);
 
   } else {
 
@@ -206,11 +207,14 @@ static int encoder_name_to_code(const char *name) {
 
 static pthread_once_t initialized = PTHREAD_ONCE_INIT;
 static int all_is_lost = TRUE;
-static str *temp_home_dir; //This ptr is only valid during the call to rosie_home_init(), used to pass the arg into initialize()
+static _Atomic(str *) temp_rosie_home; //This ptr is only valid during the call to rosie_home_init(), used to pass the arg into initialize()
 
 static void initialize() {
   LOG("INITIALIZE start\n");
-  if (!set_bootscript(temp_home_dir)) return; /* all is lost */
+
+  str *local_rosie_home_ptr = atomic_load_explicit(&temp_rosie_home, memory_order_relaxed);
+
+  if (!set_bootscript(local_rosie_home_ptr)) return; /* all is lost */
   all_is_lost = FALSE;
   LOG("INITIALIZE finish\n");
   return;
@@ -284,7 +288,8 @@ static int to_json_string(lua_State *L, int pos, str *json_string) {
      *json_string = rosie_string_from(NULL, 0);
      /* When the messages table is empty, be sure to return a null rosie_string */
      lua_pushnil(L);
-     if (!lua_next(L, pos-1)) {
+     //if (!lua_next(L, pos-1)) { //TODO: LP: Discuss this with Jamie.  I think this was a bug
+     if (!lua_next(L, -2)) {
        return LUA_OK;
      } else {
        lua_pop(L, 2);
@@ -378,9 +383,11 @@ static lua_State *newstate() {
 EXPORT
 void rosie_home_init(str *home, str *messages) {
   
-  temp_home_dir = home; //This assignment should be atomic, and therefore there is no thread-safty
-  // issue if rosie_home_init is called twice from different threads at the same time.  Rosie will
-  // be initialized with the home value from one of the threads. 
+  atomic_store_explicit(&temp_rosie_home, home, memory_order_relaxed); //Make an atomic assignment
+  // to temp_rosie_home.  That way, if rosie_home_init is called twice from different threads at the
+  // same time.  Rosie will be initialized with the home value from one of the threads, but never
+  // some half-corrupt ptr.  This should just be a regular assignment on architectures where a
+  // ptr is word-sized, which is most of them.
 
   pthread_once(&initialized, initialize);
   if (all_is_lost) {

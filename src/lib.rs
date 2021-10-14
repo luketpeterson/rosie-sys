@@ -299,7 +299,7 @@ impl RawMatchResult<'_> {
 /// TODO: In the future, we should embed the CONTENTS of the rosie_home into the binary, not just the path
 pub fn rosie_home_default() -> Option<&'static str> {
 
-    option_env!("ROSIE_HOME_DIR")
+    option_env!("ROSIE_HOME")
 }
 
 //Interfaces to the raw librosie functions
@@ -330,9 +330,9 @@ extern "C" {
     // int rosie_read_rcfile(Engine *e, str *filename, int *file_exists, str *options, str *messages);
     // int rosie_execute_rcfile(Engine *e, str *filename, int *file_exists, int *no_errors, str *messages);
 
-    // int rosie_expression_refs(Engine *e, str *input, str *refs, str *messages);
+    pub fn rosie_expression_refs(e : EnginePtr, expression : *const RosieString, refs : *mut RosieString, messages : *mut RosieString) -> i32; // int rosie_expression_refs(Engine *e, str *input, str *refs, str *messages);
     // int rosie_block_refs(Engine *e, str *input, str *refs, str *messages);
-    // int rosie_expression_deps(Engine *e, str *input, str *deps, str *messages);
+    pub fn rosie_expression_deps(e : EnginePtr, expression : *const RosieString, deps : *mut RosieString, messages : *mut RosieString) -> i32; // int rosie_expression_deps(Engine *e, str *input, str *deps, str *messages);
     // int rosie_block_deps(Engine *e, str *input, str *deps, str *messages);
     // int rosie_parse_expression(Engine *e, str *input, str *parsetree, str *messages);
     // int rosie_parse_block(Engine *e, str *input, str *parsetree, str *messages);
@@ -364,8 +364,8 @@ fn rosie_string() {
 /// Tests the native (unsafe) librosie function, mainly to make sure it built and linked properly
 fn librosie() {
 
-    //NOTE: I'm not doing a thorough job with error handling and cleanup in this test.
-    // This is NOT a good template to use for proper use of Rosie.  You relly should
+    //WARNING: I'm not doing a thorough job with error handling and cleanup in this test.
+    // This is NOT a good template to use for proper use of Rosie.  You really should
     // use the rosie-rs crate to call Rosie from Rust.
 
     //Init the Rosie home directory, if we have the rosie_home_default()
@@ -373,9 +373,12 @@ fn librosie() {
     if let Some(rosie_home_dir) = rosie_home_default() {
         unsafe{ rosie_home_init(&RosieString::from_str(&rosie_home_dir), &mut message_buf) };
     }
+    message_buf.manual_drop();
 
     //Create the rosie engine with rosie_new
+    let mut message_buf = RosieString::empty();
     let engine = unsafe { rosie_new(&mut message_buf) };
+    message_buf.manual_drop();
 
     //Check the libpath is relative to the directory we set, if we set a path
     let mut path_rosie_string = RosieString::empty();
@@ -384,11 +387,14 @@ fn librosie() {
     if let Some(rosie_home_dir) = rosie_home_default() {
         assert_eq!(path_rosie_string.as_str(), format!("{}/rpl", rosie_home_dir));
     }
+    path_rosie_string.manual_drop();
 
     //Compile a valid rpl pattern, and confirm there is no error
+    let mut message_buf = RosieString::empty();
     let mut pat_idx : i32 = 0;
     let expression_rosie_string = RosieString::from_str("{[012][0-9]}");
     let result_code = unsafe { rosie_compile(engine, &expression_rosie_string, &mut pat_idx, &mut message_buf) };
+    message_buf.manual_drop();
     assert_eq!(result_code, 0);
 
     //Match the pattern against a matching input using rosie_match
@@ -402,6 +408,26 @@ fn librosie() {
     //Make sure we can sucessfully free the pattern
     let result_code = unsafe { rosie_free_rplx(engine, pat_idx) };
     assert_eq!(result_code, 0);
+
+    //Get the refs for a pattern expression that references a symbol from the Standard Pattern Library
+    let expression_rosie_string = RosieString::from_str("date.us_long");
+    let mut refs_buf = RosieString::empty();
+    let mut message_buf = RosieString::empty();
+    let result_code = unsafe { rosie_expression_refs(engine, &expression_rosie_string, &mut refs_buf, &mut message_buf) };
+    assert_eq!(result_code, 0);
+    assert_eq!(message_buf.len(), 0);
+    refs_buf.manual_drop();
+    message_buf.manual_drop();
+
+    //Get the deps from the pattern
+    let mut deps_buf = RosieString::empty();
+    let mut message_buf = RosieString::empty();
+    let result_code = unsafe { rosie_expression_deps(engine, &expression_rosie_string, &mut deps_buf, &mut message_buf) };
+    assert_eq!(result_code, 0);
+    assert_eq!(message_buf.len(), 0);
+    assert_eq!(deps_buf.as_str(), "[\"date\"]");
+    deps_buf.manual_drop();
+    message_buf.manual_drop();
 
     //Clean up the engine with rosie_finalize
     unsafe{ rosie_finalize(engine); }
