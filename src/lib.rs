@@ -89,6 +89,8 @@ impl RosieString<'_> {
 }
 
 /// An error code from a Rosie operation 
+//
+//WARNING!!!!  This enum is shadowed in the rosie-rs crate, in the `src/sys_shadow.rs` file.  DON'T MODIFY IT WITHOUT UPDATING THE SHADOW
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum RosieError {
     /// No error occurred.
@@ -96,8 +98,7 @@ pub enum RosieError {
     /// An unknown error occurred.
     MiscErr = -1,
     /// The Rosie Engine could not allocate the needed memory, either because the system allocator failed or because the limit
-    /// set by [set_mem_alloc_limit](RosieEngine::set_mem_alloc_limit) was reached.  See [set_mem_alloc_limit](RosieEngine::set_mem_alloc_limit),
-    /// [mem_alloc_limit](RosieEngine::mem_alloc_limit), and [mem_usage](RosieEngine::mem_usage) for more details.
+    /// set by [rosie_alloc_limit] was reached.
     OutOfMemory = -2,
     /// A system API call failed.
     SysCallFailed = -3,
@@ -124,7 +125,7 @@ impl RosieError {
     }
 }
 
-/// An Encoder Module used to format the results, when using [match_pattern_raw](RosieEngine::match_pattern_raw).
+/// An Encoder Module used to format the results, when using [rosie_match].
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum MatchEncoder {
     /// The simplest and fastest encoder.  Outputs `true` if the pattern matched and `false` otherwise.
@@ -174,13 +175,13 @@ impl LibRosieMatchEncoder for MatchEncoder {
 }
 
 impl MatchEncoder {
-    /// Create a MatchEncoder, that calls the `Lua` function name specified by the argument.
+    /// Create a MatchEncoder, that calls the `Lua` function name specified by the argument
     pub fn custom(name : &str) -> Self {
         MatchEncoder::Custom(CString::new(name.as_bytes()).unwrap())
     }
 }
 
-/// A format for debugging output, to be used with [trace_pattern](RosieEngine::trace_pattern).
+/// A format for debugging output, to be used with [rosie_trace]
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum TraceFormat {
     /// The complete trace data, formatted as JSON 
@@ -227,7 +228,7 @@ pub struct EnginePtr<'a> {
 /// 
 /// **NOTE**: A RawMatchResult points to memory inside the engine that is associated with the pattern, therefore you may
 /// not perform any additional matching with that pattern until the RawMatchResult has been released.  This is enforced with
-/// borrowing semantics in the rosie-rs crate, but at the sys level it's on your honor.
+/// borrowing semantics in the rosie-rs crate's `Pattern::match_raw` method, but in the sys crate it's on your honor.
 #[repr(C)]
 #[derive(Debug)]
 pub struct RawMatchResult<'a> {
@@ -278,7 +279,7 @@ impl RawMatchResult<'_> {
     pub fn as_str(&self) -> &str {
         self.data.as_str()
     }
-    /// Returns the time, in microseconds, elapsed during the call to [match_pattern_raw](RosieEngine::match_pattern_raw)
+    /// Returns the total time, in microseconds, elapsed during the call to [rosie_match] inside librosie.
     pub fn time_elapsed_total(&self) -> usize {
         usize::try_from(self.ttotal).unwrap()
     }
