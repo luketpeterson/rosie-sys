@@ -2,7 +2,7 @@
 /*                                                                           */
 /*  rbuf.c   Custom version of luaL_Buffer, uses buf.c                       */
 /*                                                                           */
-/*  © Copyright Jamie A. Jennings, 2018.                                     */
+/*  © Copyright Jamie A. Jennings, 2018, 2021.                               */
 /*  © Copyright IBM Corporation 2017.                                        */
 /*  LICENSE: MIT License (https://opensource.org/licenses/mit-license.html)  */
 /*  AUTHOR: Jamie A. Jennings                                                */
@@ -143,8 +143,8 @@ int r_readint(const char **s) {
 }
 
 /* Unsafe: caller to ensure that read will not pass end of buffer */
-int r_peekint(const char **s) {
-  return buf_peekint(*s);
+int r_peekint(const char *s) {
+  return buf_peekint(s);
 }
 
 void r_addshort (lua_State *L, RBuffer *rb, short i) {

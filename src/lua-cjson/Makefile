@@ -39,7 +39,7 @@ endif
 
 TARGET =            cjson.so
 CFLAGS =            -O3 -Wall -pedantic -DNDEBUG -pthread -DMULTIPLE_THREADS
-#LUA_INCLUDE_DIR =   $(PREFIX)/src
+LUA_INCLUDE_DIR =   $(PREFIX)/src
 
 ##### Number conversion configuration #####
 

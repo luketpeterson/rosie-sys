@@ -62,8 +62,10 @@ void printinst (const Instruction *op, const Instruction *p) {
     case IOpenCapture: {
       printcapkind(addr(p));
       printf(" (idx = %d)", index(p));
-      if (addr(p) == Crosieconst)
-	printf("  (data = %d)", addr(p) + 1);
+      break;
+    }
+    case ICloseConstCapture: {
+      printf(" (idx = %d)", index(p));
       break;
     }
     case IBackref: {
@@ -186,7 +188,6 @@ void printtree (TTree *tree, int ident) {
       break;
     }
     case TCapture: {
-      //      printf(" cap: %d  key: %d  n: %d\n", tree->cap, tree->key, tree->u.n);
       printf(" kind: %d  key: %d  key2: %d\n", tree->cap, tree->key, tree->u.n);
       printtree(sib1(tree), ident + 2);
       break;

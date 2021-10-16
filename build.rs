@@ -331,6 +331,8 @@ fn librosie_src_build() -> bool {
 
     //GOAT, Look at fixing the warnings caused by lua-cjson
 
+    //GOAT, rename rs crate to just rosie, including all references to it
+
     true
 }
 

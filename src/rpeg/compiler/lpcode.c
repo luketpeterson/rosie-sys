@@ -15,6 +15,8 @@
 #include "rplx.h"
 #include "vm.h"
 
+#include "lpprint.h"
+
 /* signals a "no-instruction */
 #define NOINST		-1
 
@@ -745,11 +747,11 @@ static int codeand (CompileState *compst, TTree *tree, int tt) {
 }
 
 static int codecapture (CompileState *compst, TTree *tree, int tt,
-                         const Charset *fl) {
-    addinstcap(compst, IOpenCapture, tree->cap, tree->key);
-    if (tree->cap == Crosieconst) {
-      assert(sib1(tree)->tag == TTrue);
-      addinstruction_aux(compst, ICloseConstCapture, tree->u.n);
+			const Charset *fl) {
+  addinstcap(compst, IOpenCapture, tree->cap, tree->key);
+  if (tree->cap == Crosieconst) {
+    assert(sib1(tree)->tag == TTrue);
+    addinstruction_aux(compst, ICloseConstCapture, tree->u.n);
     }
     else {
       int err = codegen(compst, sib1(tree), 0, tt, fl);

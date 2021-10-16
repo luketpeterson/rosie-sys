@@ -144,24 +144,7 @@ int byte_Open(CapState *cs, Buffer *buf, int count) {
   return MATCH_OK;
 }
 
-/* ----------------------------------------------------------------------------------------
- * The 'noop' output encoder looks for structural errors in the data,
- * but otherwise does nothing.
- *
- */
-
-int noop_Close(CapState *cs, Buffer *buf, int count, const char *start) {
-  UNUSED(buf); UNUSED(count); UNUSED(start);
-  if (isopencap(cs->cap)) return MATCH_CLOSE_ERROR;
-  return MATCH_OK;
-}
-
-int noop_Open(CapState *cs, Buffer *buf, int count) {
-  UNUSED(buf); UNUSED(count);
-  if (!acceptable_capture(capkind(cs->cap))) return MATCH_OPEN_ERROR;
-  return MATCH_OK;
-}
 
 Encoder debug_encoder = { debug_Open, debug_Close };
 Encoder byte_encoder = { byte_Open, byte_Close };
-Encoder noop_encoder = { noop_Open, noop_Close };
+

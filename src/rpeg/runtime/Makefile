@@ -9,6 +9,7 @@
 ## AUTHOR: Jamie A. Jennings
 
 BUILD_ROOT=$(shell cd ../../..; pwd)
+LUADIR = $(BUILD_ROOT)/submodules/lua
 COMMONDIR = ../include
 
 REPORTED_PLATFORM=$(shell (uname -o || uname -s) 2> /dev/null)
@@ -79,7 +80,7 @@ CWARNS = -Wall -Wextra -pedantic \
         -Wno-missing-declarations \
 
 # ASAN_OPT may be exported from the Makefile that calls this one
-CFLAGS = -fvisibility=hidden $(CWARNS) $(COPT) -std=$(Cstd) -I$(COMMONDIR) -fPIC $(ASAN_OPT)
+CFLAGS = -fvisibility=hidden $(CWARNS) $(COPT) -std=$(Cstd) -I$(COMMONDIR) -I$(LUADIR)/include -fPIC $(ASAN_OPT)
 
 default: $(FILES)
 
@@ -110,4 +111,4 @@ ktable.o: ktable.c ../include/config.h ../include/ktable.h
 rplx.o: rplx.c ../include/config.h ../include/rplx.h ../include/ktable.h
 stack.o: stack.c
 vm.o: vm.c ../include/config.h ../include/rplx.h ../include/ktable.h \
-  ../include/buf.h ../include/vm.h stack.c
+  ../include/str.h ../include/buf.h ../include/vm.h stack.c

@@ -14,32 +14,58 @@
 #include "rplx.h"
 #include "buf.h"
 #include "ktable.h"
+#include "rpeg.h"
+#include "str.h"
 
 typedef enum MatchErr {
   /* Match vm: */
-  MATCH_OK, MATCH_HALT,
-  MATCH_ERR_STACK, MATCH_ERR_BADINST, MATCH_ERR_CAP,
-  MATCH_ERR_INPUT_LEN, MATCH_ERR_OUTPUT_MEM,
+  MATCH_OK,
+  MATCH_HALT,
+  MATCH_ERR_STACK,
+  MATCH_ERR_BADINST,
+  MATCH_ERR_CAP,
+  MATCH_ERR_INPUT_LEN,
+  MATCH_ERR_STARTPOS,
+  MATCH_ERR_ENDPOS,
+  MATCH_ERR_OUTPUT_MEM,
+  MATCH_ERR_NULL_PATTERN,
+  MATCH_ERR_NULL_INPUT,
+  MATCH_ERR_NULL_OUTPUT,
+  MATCH_ERR_NULL_MATCHRESULT,
   /* Capture processing: */
-  MATCH_OPEN_ERROR, MATCH_CLOSE_ERROR,
-  MATCH_FULLCAP_ERROR, MATCH_STACK_ERROR, MATCH_INVALID_ENCODER,
-  MATCH_IMPL_ERROR, MATCH_OUT_OF_MEM,  
+  MATCH_OPEN_ERROR,
+  MATCH_CLOSE_ERROR,
+  MATCH_FULLCAP_ERROR,
+  MATCH_STACK_ERROR,
+  MATCH_INVALID_ENCODER,
+  /* General: */
+  MATCH_IMPL_ERROR,
+  MATCH_OUT_OF_MEM,  
 } MatchErr;
 
 static const char *MATCH_MESSAGES[] __attribute__ ((unused)) = {
+  /* Match vm: */
   "ok",
   "halt/abend",
   "backtracking stack limit exceeded",
   "invalid instruction for matching vm",
   "capture limit exceeded (or insufficient memory for captures)",
   "input too large",
+  "start position beyond end of input",
+  "end position beyond end of input",
   "insufficient memory for match data",
+  /* Capture processing: */
   "open capture error in rosie match",
   "close capture error in rosie match",
   "full capture error in rosie match",
   "capture stack overflow in rosie match",
   "invalid encoder in rosie match",
-  "implementation error",
+  "null pattern argument",
+  "null input argument",
+  "null output buffer argument",
+  "null match result argument",
+  /* General: */
+  "implementation error (bug)",
   "out of memory",
 };
 
@@ -58,7 +84,6 @@ typedef struct Match {
   unsigned int leftover;  /* leftover characters, in bytes */
   Buffer *data;
 } Match;
-
 
 /* Kinds of captures 
  *
@@ -89,14 +114,14 @@ static const char *const CLOSE_CAPTURE_NAMES[] = {
 #define setcapkind(cap, kind) (cap)->c.code = (kind)
 
 typedef struct Capture {
-  const char *s;	/* subject position */
-  CodeAux c;		/* .c.code is 'kind' and .c.aux is ktable index */
+  byte_ptr s;	    /* subject position */
+  CodeAux c;	    /* .c.code is 'kind' and .c.aux is ktable index */
 } Capture;
 
 typedef struct CapState {
   Capture *cap;			/* current capture */
   Capture *ocap;		/* (original) capture list */
-  const char *s;		/* original string */
+  byte_ptr s;			/* original string */
   Ktable *kt;			/* ktable */
 } CapState;
 
@@ -108,16 +133,18 @@ typedef struct CapState {
 
 typedef struct {  
   int (*Open)(CapState *cs, Buffer *buf, int count);
-  int (*Close)(CapState *cs, Buffer *buf, int count, const char *start);
+  int (*Close)(CapState *cs, Buffer *buf, int count, byte_ptr start);
 } Encoder;
  
-Match *match_new(void);
-void match_free(Match *m);
-
-int vm_match (Chunk *chunk, Buffer *input, int start, Encoder encode,
-	      /* outputs: */ Match *match, Stats *stats);
-
 int sizei (const Instruction *i);
 
+int vm_match2 (/* inputs: */
+	       Chunk *chunk,
+	       struct rosie_string *input, uint32_t startpos, uint32_t endpos,
+	       Encoder encode,
+	       uint8_t collect_times,
+	       Buffer *output,
+	       /* output: */
+	       struct rosie_matchresult *match);
 #endif
 

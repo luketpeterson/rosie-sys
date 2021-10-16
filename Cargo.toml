@@ -9,7 +9,6 @@ build = "build.rs"
 
 [dependencies]
 libc = "0.2.103"
-#mlua = { path = "../mlua/", features = [ "lua53", "vendored" ], optional = true } #GOAT
 mlua = { version = "0.6.6", features = [ "lua53", "vendored" ], optional = true }
 
 [build-dependencies]

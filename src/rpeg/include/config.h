@@ -42,7 +42,7 @@
 #endif
 
 /* Whether or not statistics are kept */
-#define RECORD_VMSTATS 1
+#define RECORD_VMSTATS 0
 
 typedef unsigned char byte;
 

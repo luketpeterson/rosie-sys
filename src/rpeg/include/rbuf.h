@@ -30,7 +30,7 @@ char *r_prepbuffsize (lua_State *L, RBuffer *buf, size_t sz);
 void r_addlstring (lua_State *L, RBuffer *buf, const char *s, size_t l);
 void r_addint (lua_State *L, RBuffer *buf, int i);
 int r_readint(const char **s);
-int r_peekint(const char **s);
+int r_peekint(const char *s);
 void r_addshort (lua_State *L, RBuffer *buf, short i);
 int r_readshort(const char **s);
      

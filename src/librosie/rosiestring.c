@@ -2,7 +2,7 @@
 /*                                                                           */
 /*  rosiestring.c  Part of librosie.c                                        */
 /*                                                                           */
-/*  © Copyright Jamie A. Jennings 2017, 2018, 2019.                          */
+/*  © Copyright Jamie A. Jennings 2017, 2018, 2019, 2021.                    */
 /*  LICENSE: MIT License (https://opensource.org/licenses/mit-license.html)  */
 /*  AUTHOR: Jamie A. Jennings                                                */
 
@@ -60,20 +60,23 @@ str rosie_new_string(byte_ptr msg, size_t len) {
   return rosie_string_from(new, len);
 }
 
+/* Copies msg into heap-allocated storage */
 EXPORT
 str *rosie_new_string_ptr(byte_ptr msg, size_t len) {
   str temp = rosie_new_string(msg, len);
   return rosie_string_ptr_from(temp.ptr, temp.len);
 }
 
+/* Frees str struct AND msg storage */
 EXPORT
 void rosie_free_string_ptr(str *ref) {
-  if (ref->ptr) free(ref->ptr);
+  if (ref->ptr) free((void *) ref->ptr);
   free(ref);
 }
 
+/* Frees msg storage */
 EXPORT
 void rosie_free_string(str s) {
-  if (s.ptr) free(s.ptr);
+  if (s.ptr) free((void *) s.ptr);
 }
 

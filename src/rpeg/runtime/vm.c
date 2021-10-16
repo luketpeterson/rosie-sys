@@ -41,7 +41,7 @@
 static const Instruction giveup = {.i.code = IGiveup, .i.aux = 0};
 
 typedef struct BTEntry {
-  const char *s;	      /* saved position (or NULL for calls) */
+  byte_ptr s;		      /* saved position (or NULL for calls) */
   const Instruction *p;	      /* next instruction */
   int caplevel;
 } BTEntry;
@@ -89,7 +89,7 @@ static Capture *doublecap (Capture *cap, Capture *initial_capture, int captop) {
   return newc;
 }
 
-static void BTEntry_stack_print (BTEntry_stack *stack, const char *o, Instruction *op) {
+static void BTEntry_stack_print (BTEntry_stack *stack, byte_ptr o, Instruction *op) {
   BTEntry *top;
   for (top = (stack->next - 1); top >= stack->base; top--)
     fprintf(stderr,
@@ -121,7 +121,7 @@ static void print_caplist(Capture *capture, int captop, Ktable *kt) {
 #endif
 
 static int find_prior_capture(Capture *capture, int captop, int target_idx,
-			      const char **s, const char **e, Ktable *kt) {
+			      byte_ptr *s, byte_ptr *e, Ktable *kt) {
   UNUSED(kt);
   if (captop == 0) return 0;
 
@@ -270,8 +270,8 @@ static int find_prior_capture(Capture *capture, int captop, int target_idx,
 #define UPDATE_STAT(action, var, value) if ((action)) (var) = (value)
 #define UPDATE_CAPSTATS(inst) capstats[opcode(inst)==IOpenCapture ? addr(inst) : Cclose]++
 #else
-#define INCR_STAT(action, var) UNUSED((var))
-#define UPDATE_STAT(action, var, value) UNUSED((var))
+#define INCR_STAT(action, var) UNUSED((stats))
+#define UPDATE_STAT(action, var, value) UNUSED((stats))
 #define UPDATE_CAPSTATS(inst) UNUSED(capstats)
 #endif
 
@@ -287,8 +287,8 @@ static int find_prior_capture(Capture *capture, int captop, int target_idx,
 
 #define JUMPBY(delta) pc = pc + (delta)
 
-static int vm (const char **r,
-	       const char *o, const char *s, const char *e,
+static int vm (byte_ptr *r,
+	       byte_ptr o, byte_ptr s, byte_ptr e,
 	       Instruction *op, Capture **capturebase,
 	       Stats *stats, int capstats[], Ktable *kt) {
   BTEntry_stack stack;
@@ -297,6 +297,9 @@ static int vm (const char **r,
   Capture *capture = *capturebase;
   int capsize = INIT_CAPLISTSIZE;
   int captop = 0;  /* point to first empty slot in captures */
+
+/*   printf("*** In vm:\n"); */
+/*   printf("***   input = '%.*s'\n", (int) (e - s), s); */
 
   const Instruction *pc = op;  /* current instruction */
   BTEntry_stack_push(&stack, (BTEntry) {s, &giveup, 0});
@@ -465,33 +468,22 @@ static int vm (const char **r,
     case IBackref: {
       assert(sizei(pc)==1);
       /* Now find the prior capture that we want to reference */
-      const char *startptr = NULL;
-      const char *endptr = NULL;
+      byte_ptr startptr = NULL;
+      byte_ptr endptr = NULL;
       int target = index(pc);
-      //printf("Entering IBackref, target = %d\n", target);
       int have_prior = find_prior_capture(capture, captop, target, &startptr, &endptr, kt);
-      //printf("%s:%d: have_prior is %s\n", __FILE__, __LINE__, have_prior ? "true" : "false");
       if (have_prior) {
 	assert( startptr && endptr );
 	assert( endptr >= startptr );
 	size_t prior_len = endptr - startptr;
-	//printf("%s:%d: prior data is at %zu (0-based) is '%.*s'\n", __FILE__, __LINE__,
-	//     (startptr - o),
-	//     (int) prior_len, startptr);
 	/* And check to see if the input at the current position */
 	/* matches that prior captured text. */
-	//printf("%s:%d: looking at %zu (0-based) '%.*s'\n", __FILE__, __LINE__,
-	//       (e - o),
-	//     (int) (e - s), s);
 	if ( ((size_t)(e - s) >= prior_len) && (memcmp(s, startptr, prior_len) == 0) ) {
 	  s += prior_len;
 	  JUMPBY(1);
-	  //printf("%s:%d: input matched prior!\n", __FILE__, __LINE__);
 	  continue;
 	} /* if input matches prior */
-	//printf("%s:%d: input did not match prior\n", __FILE__, __LINE__);
       }	/* if have a prior match at all */
-      //printf("%s:%d: input did not match or found no prior\n", __FILE__, __LINE__);
       /* Else no match. */
       goto fail;
     }
@@ -558,30 +550,10 @@ static int vm (const char **r,
   }
 }
 
-/*
- * Get the initial position for the match, interpreting negative
- * values from the end of the input string, using Lua convention,
- * including 1-based indexing.
- */
-static size_t initposition (int pos, size_t len) {
-  if (pos > 0) {		/* positive index? */
-    if ((size_t)pos <= len)	/* inside the string? */
-      return (size_t)pos - 1;	/* correct to 0-based indexing */
-    else return len;		/* crop at the end */
-  }
-  else {			     /* negative index */
-    if ((size_t)(-pos) <= len)	     /* inside the string? */
-      return len - ((size_t)(-pos)); /* return position from the end */
-    else return 0;		     /* crop at the beginning */
-  }
-}
-
-
 /* -------------------------------------------------------------------------- */
 
-
 typedef struct Cap {
-  const char *start;
+  byte_ptr start;
   int count;
 } Cap;
 
@@ -619,7 +591,7 @@ STACK_POP_FUNCTION(Cap)
 
 static int caploop (CapState *cs, Encoder encode, Buffer *buf, unsigned int *max_capdepth) {
   int err;
-  const char *start;
+  byte_ptr start;
   int count = 0;
   Cap_stack stack;
   Cap_stack_init(&stack);
@@ -695,7 +667,7 @@ static int caploop (CapState *cs, Encoder encode, Buffer *buf, unsigned int *max
  * string. Call the output encoder functions for each capture (open,
  * close, or full).
  */
-static int walk_captures (Capture *capture, const char *s,
+static int walk_captures (Capture *capture, byte_ptr s,
 			  Ktable *kt, Encoder encode,
 			  /* outputs: */
 			  Buffer *buf, int *abend, Stats *stats) {
@@ -730,77 +702,145 @@ static int walk_captures (Capture *capture, const char *s,
   return MATCH_OK;
 }
 
-int vm_match (Chunk *chunk, Buffer *input, int start, Encoder encode,
-	      /* outputs: */ Match *match, Stats *stats) {
+/* 
+ * Wednesday, August 18, 2021: vm_match2() replaces the old vm_match(). 
+ *
+ * The vm_match2 interface:
+ *
+ * Note that it differs from vm_match!
+ * 
+ * input is passed as *str, which has a uint32_t length.
+ * startpos remains 1-based, with 0 indicating default, i.e. start of input.
+ * endpos is 1-based, with 0 indicating default, i.e. input_len. 
+ *
+ * match is an input/output parameter: 
+ *
+ *   If vm_match2 will collect timing data, then the measured total
+ *   and match times will be added to the values in 'match' on entry
+ *   to vm_match2.  So, set these to 0 before calling vm_match2 if you
+ *   are not wanting to accumulate times across multiple calls.
+ *
+ * On successful exit from vm_match2, these fields in 'match' will be
+ * set: data, leftover, abend.  If vm_match2 has collected timing
+ * data, then the ttotal and tmatch fields will also be updated.
+
+ * RETURN VALUES
+ *
+ * The value returned from vm_match2 will be MATCH_OK if no internal
+ * errors (bugs) occurred, and no API usage errors occurred
+ * (e.g. calling vm_match2 with invalid arguments).
+ *
+ * On successful return from vm_match2, the match->data field will be
+ * (NULL, 0) if there was no match.  A match with no data will have a
+ * non-null value in the pointer field, and 0 in the length field.
+
+ * IMPORTANT
+ *
+ * When there is a match, the match->data field is a copy of the
+ * pointer and length of the Buffer 'output' argument.  Rationale: We
+ * want to enable reuse of 'output' across calls to vm_match2 in order
+ * to avoid allocations (i.e. to boost performance).  And we don't
+ * want a matchresult to include the Buffer object itself, because the
+ * eventual recipient of the matchresult should not be allowed to
+ * manipulate the Buffer.  The consumer of a matchresult should only
+ * be able to look at the buffer contents.  They can copy it if they
+ * need to access the data beyond the next call to vm_match2.
+
+ */
+int vm_match2 (/* inputs: */
+	       Chunk *chunk,
+	       struct rosie_string *input, uint32_t startpos, uint32_t endpos,
+	       Encoder encode,
+	       uint8_t collect_times,
+	       Buffer *output,
+	       /* output: */
+	       struct rosie_matchresult *match) {
   Capture initial_capture[INIT_CAPLISTSIZE];
   Capture *capture = initial_capture;
   int err, abend;
-  int t0, tmatch, tfinal;
-  const char *r, *s;
-  size_t i, l;
-
-  t0 = clock();
-  
-  s = input->data;
-  l = input->n;
-
-  if (l > UINT_MAX) return MATCH_ERR_INPUT_LEN;
-
-  i = initposition(start, l);
+  int t0 = 0, tmatch = 0;
+  byte_ptr r;
+  Stats stats;
   int capstats[256] = {0};
+  
+  if (input->len > UINT_MAX) return MATCH_ERR_INPUT_LEN;
 
-  // PASSING KTABLE TO VM ONLY FOR DEBUGGING
-  err = vm(&r, s, s + i, s + l, chunk->code, &capture, stats, capstats, chunk->ktable);
+  /* Rosie uses 1-based indexing.  The vm gets passed pointers into
+     the input.  Start position of 0 indicates default, which is start
+     of input.  End position of 0 indicates default, which is end of
+     input.
+  */
+  if (startpos != 0) startpos--;
+  if (endpos == 0) endpos = input->len;
+  else endpos--;
+
+  if (startpos > input->len) return MATCH_ERR_STARTPOS;
+  if (endpos < startpos) return MATCH_ERR_ENDPOS;
+
+  stats = (Stats) {match->ttotal, match->tmatch, 0, 0, 0, 0};
+  if (collect_times) t0 = clock();
+
+  err = vm(&r, input->ptr, input->ptr + startpos, input->ptr + endpos,
+	   chunk->code,
+	   &capture,
+	   collect_times ? &stats : NULL,
+	   capstats,
+	   chunk->ktable);
 
 #if (VMDEBUG) 
-  printf("vm() completed with err code %d, r as position = %ld\n", err, r ? r - s : 0);
-  if (stats) printf("vm executed %d instructions\n", stats->insts); 
-  printf("capstats from vm: Close %d, Rosiecap %d\n", capstats[Cclose], capstats[Crosiecap]); 
+  fprintf(stderr, "*** vm() completed with err code %d, r as position = %ld\n",
+	  err, r ? r - input_ptr : 0);
+  if (stats) fprintf(stderr, "*** vm executed %d instructions\n", stats->insts); 
+  fprintf(stderr, "*** capstats from vm: Close %d, Rosiecap %d\n",
+	  capstats[Cclose], capstats[Crosiecap]); 
+  /* Internal error checking */
   for(int ii=0; ii<256; ii++)
     if (!(ii==Cclose || ii==Crosiecap || ii==Crosieconst || ii==Cbackref))
       assert(capstats[ii]==0); 
 #endif
 
-  tmatch = clock();
+  if (err != MATCH_OK) goto done;
 
-  if (err != MATCH_OK) return err;
-  if (stats) stats->match_time += tmatch - t0;
-  if (r == NULL) {
-    /* We leave match->data alone, because it may be reused over
-     * successive calls to match().
-     */
-    match->matched = 0;			/* no match */
-    match->leftover = (unsigned int) l; /* leftover value is len */
-    match->abend = 0;
-    if (stats) stats->total_time += tmatch - t0; /* match time (vm only) */
-    return MATCH_OK;
+  if (collect_times) {
+    tmatch = clock();
+    match->tmatch += tmatch - t0;
   }
-  match->matched = 1;		/* match */
-  if (!match->data) match->data = buf_new(0);
-  if (!match->data) return MATCH_ERR_OUTPUT_MEM;
 
-  err = walk_captures(capture, s, chunk->ktable, encode, match->data, &abend, stats);
-  if (capture != initial_capture) free(capture);
-  if (err != MATCH_OK) return err;
+  if (r == NULL) {
+    match->data.ptr = NULL;	  /* no match */
+    match->data.len = 0;	  /* no error */
+    match->leftover = endpos - startpos;
+    match->abend = 0;
+    if (collect_times) match->ttotal += tmatch - t0;
+    goto done;
+  }
 
-  tfinal = clock();
-  match->leftover = (unsigned int) l - (r - s); /* leftover chars, in bytes */
+  if (encode.Open) {
+    /* If need to do capture processing */
+    err = walk_captures(capture, input->ptr, chunk->ktable, encode,
+			output, &abend, &stats);
+    /* If capture stack was realloc'd then we must free it */
+    if (err != MATCH_OK) goto done;
+    /* 
+       Copy pointer/len of the output buffer into the match struct, so
+       that the match struct can be returned to a librosie caller while
+       we keep the Buffer object private.
+    */
+    match->data.ptr = output->data;
+    match->data.len = output->n;
+  } else {
+    /* Must be bool output encoder, which does no capture processing */
+    match->data.ptr = NULL;
+    match->data.len = MATCH_WITHOUT_DATA;
+    abend = 0;			/* TODO: How to set this w/o walking captures? */
+  }
+
+  if (collect_times) match->ttotal += clock() - t0;
+  match->leftover = endpos - (r - input->ptr);
   match->abend = abend;
-  if (stats) stats->total_time += tfinal - t0;  /* total time (includes capture processing) */
 
-  return MATCH_OK;
+ done:
+  if (capture != initial_capture) free(capture);
+  return err;
 }
 
-Match *match_new() {
-  Match *m = malloc(sizeof(Match));
-  m->data = NULL;
-  return m;
-}
-
-void match_free(Match *m) {
-  if (!m) return;
-  /* N.B. The data buffer is NOT FREED HERE because its extent is
-     independent of the match struct that points to it.
-  */
-  free(m);
-}

@@ -25,22 +25,7 @@
 #include "lpprint.h"
 #include "file.h"
 #include "lptree.h"
-
-/* ------------------------------------------------------------------
- * FUTURE: The definition of rstr is duplicated from librosie.h. Need
- * to rework the header files such that this definition is available
- * to any file that includes librosie.h, plus this one, lptree.c
- */
-#define byte_ptr unsigned char *
-
-typedef struct rosie_string {
-     uint32_t len;
-     byte_ptr ptr;
-} rstr;
-
-typedef struct rosie_string str;
-/* ------------------------------------------------------------------ */
-
+#include "str.h"
 #include "rbuf.h"
 #include "rpeg.h"
 #include "ktable.h" 
@@ -188,17 +173,22 @@ static void finalfix (lua_State *L, int postable, TTree *g, TTree *t, Ktable *kt
 
 /* ---------------------------------------------------------------------------------------- */
 
+/* For internal use.  Same as extract_pattern but allows C compiler to inline it. */
 static Pattern *getpattern (lua_State *L, int idx) {
   Pattern *p = (Pattern *)luaL_checkudata(L, idx, PATTERN_T);
   assert(p->kt);
   return p;
 }
 
+/* For external use (librosie) */
+void *extract_pattern (lua_State *L, int idx) {
+  void *p = luaL_checkudata(L, idx, PATTERN_T);
+  return p;
+}
 
 static int getsize (lua_State *L, int idx) {
   return (lua_rawlen(L, idx) - sizeof(Pattern)) / sizeof(TTree) + 1;
 }
-
 
 static TTree *gettree (lua_State *L, int idx, int *len) {
   Pattern *p = getpattern(L, idx);
@@ -306,6 +296,8 @@ static void correctkeys (TTree *tree, int n) {
   case TCapture: {
     if (tree->key > 0)
       tree->key += n;
+    if (tree->u.n > 0)
+      tree->u.n += n;
     break;
   }
   default: break;
@@ -849,21 +841,9 @@ static TTree *newemptycapkey2 (lua_State *L, int cap, int idx, int idx2) {
   return tree;
 }
 
-/* static int lp_simplecapture (lua_State *L) { */
-/*   return capture_aux(L, Csimple, 0); */
-/* } */
-
-
-/* static int lp_poscapture (lua_State *L) { */
-/*   newemptycap(L, Cposition); */
-/*   return 1; */
-/* } */
-
-
 static Instruction *prepcompile (lua_State *L, Pattern *p);
 
-
-/* do the code generation for pattern (if needed), and return the
+/* Do the code generation for pattern (if needed), and return the
  * resulting number of instructions
  */
 static int r_codegen_if_needed (lua_State *L) {
@@ -902,7 +882,7 @@ static int r_capture (lua_State *L) {
   return result;
 }
 
-/* rosie constant capture */
+/* Rosie constant capture */
 static int r_constcapture (lua_State *L) { 
   size_t len;
   luaL_checklstring(L, 1, &len); /* value (a constant string) */
@@ -914,8 +894,8 @@ static int r_constcapture (lua_State *L) {
   return 1;
 }  
   
-/* rosie backreference (different from lpeg backreference). */
-/* first arg is pattern (used at compile time), second is pattern name (used at runtime) */
+/* Rosie backreference (different from lpeg backreference). */
+/* First arg is pattern (used at compile time), second is pattern name (used at runtime) */
 static int r_backref (lua_State *L) {
   size_t len;
   getpattern(L, 1);
@@ -930,49 +910,45 @@ static int r_backref (lua_State *L) {
   return 1;
 }
 
-
-/* }====================================================== */
-
-
 /*
-** {======================================================
+** =======================================================
 ** Grammar - Tree generation
 ** =======================================================
 */
 
 /*
-** push on the stack the index and the pattern for the
-** initial rule of grammar at index 'arg' in the stack;
-** also add that index into position table.
+** Push on the stack the index and the pattern for the initial rule of
+** grammar at index 'arg' in the stack; also add that index into
+** position table.
 */
 static void getfirstrule (lua_State *L, int arg, int postab) {
   LOGf("*** getfirstrule(grammar table at stack position %d, postable at %d)\n", arg, postab);
   int top;
   (void)(top);			/* suppress 'top is unused' warning when not debugging */
   if (DEBUG) { top = lua_gettop(L); }
-  lua_rawgeti(L, arg, 1);  /* access first element */
-  if (lua_isstring(L, -1)) {  /* is it the name of initial rule? */
-    lua_pushvalue(L, -1);  /* duplicate it to use as key */
-    lua_gettable(L, arg);  /* get associated rule */
+  lua_rawgeti(L, arg, 1);	/* access first element */
+  if (lua_isstring(L, -1)) {	/* is it the name of initial rule? */
+    lua_pushvalue(L, -1);	/* duplicate it to use as key */
+    lua_gettable(L, arg);	/* get associated rule */
   }
   else {
-    lua_pushinteger(L, 1);  /* key for initial rule */
-    lua_insert(L, -2);  /* put it before rule */
+    lua_pushinteger(L, 1);	/* key for initial rule */
+    lua_insert(L, -2);		/* put it before rule */
   }
-  if (!testpattern(L, -1)) {  /* initial rule not a pattern? */
+  if (!testpattern(L, -1)) {	/* initial rule not a pattern? */
     if (lua_isnil(L, -1))
       luaL_error(L, "grammar has no initial rule");
     else
       luaL_error(L, "initial rule '%s' is not a pattern", lua_tostring(L, -2));
   }
-  lua_pushvalue(L, -2);  /* push key */
-  lua_pushinteger(L, 1);  /* push rule position (after TGrammar) */
-  lua_settable(L, postab);  /* insert pair at position table */
+  lua_pushvalue(L, -2);	        /* push key */
+  lua_pushinteger(L, 1);        /* push rule position (after TGrammar) */
+  lua_settable(L, postab);	/* insert pair at position table */
   if (DEBUG) assert( (lua_gettop(L) - top) == 2 );
 }
 
 /*
-** traverse grammar at index 'arg', pushing all its keys and patterns
+** Traverse grammar at index 'arg', pushing all its keys and patterns
 ** into the stack. Create a new table (before all pairs key-pattern) to
 ** collect all keys and their associated positions in the final tree
 ** (the "position table").
@@ -1009,7 +985,6 @@ static int collectrules (lua_State *L, int arg, int *totalsize) {
   return n;
 }
 
-
 static void buildgrammar (lua_State *L, TTree *grammar, int frule, int n) {
   int i;
   TTree *nd = sib1(grammar);  /* auxiliary pointer to traverse the tree */
@@ -1027,7 +1002,6 @@ static void buildgrammar (lua_State *L, TTree *grammar, int frule, int n) {
   }
   nd->tag = TTrue;  /* finish list of rules */
 }
-
 
 /*
 ** Check whether a tree has potential infinite loops
@@ -1051,7 +1025,6 @@ static int checkloops (TTree *tree) {
   }
 }
 
-
 static int verifyerror (lua_State *L, int *passed, int npassed) {
   if (!isktable(L, -1)) luaL_error(L, "%s:did not find ktable at top of stack", __func__);
   int i, j;
@@ -1065,7 +1038,6 @@ static int verifyerror (lua_State *L, int *passed, int npassed) {
   }
   return luaL_error(L, "too many left calls in grammar");
 }
-
 
 /*
 ** Check whether a rule can be left recursive; raise an error in that
@@ -1119,7 +1091,6 @@ static int verifyrule (lua_State *L, TTree *tree, int *passed, int npassed,
   }
 }
 
-
 static void verifygrammar (lua_State *L, TTree *grammar) {
   if (!isktable(L, -1)) luaL_error(L, "%s:did not find ktable at top of stack", __func__);
   int passed[MAXRULES];
@@ -1146,7 +1117,6 @@ static void verifygrammar (lua_State *L, TTree *grammar) {
   assert(rule->tag == TTrue);
 }
 
-
 /*
 ** Give a name for the initial rule if it is not referenced.  Assumes
 ** ktable is on top of stack.
@@ -1170,7 +1140,6 @@ static void initialrulename (lua_State *L, TTree *grammar, int frule) {
   }
 }
 
-
 static TTree *newgrammar (lua_State *L, int arg) {
   int treesize;
   int frule = lua_gettop(L) + 2;  /* position of first rule's key */
@@ -1193,8 +1162,6 @@ static TTree *newgrammar (lua_State *L, int arg) {
   lua_pop(L, n * 2 + 1);  /* remove position table + rule pairs */
   return g;  /* new table at the top of the stack */
 }
-
-/* }====================================================== */
 
 #if defined(DEBUG)
 #define CHECK_KEY(k) do {						\
@@ -1268,7 +1235,6 @@ static void compact_ktable(lua_State *L, Pattern *p) {
   int idx, newidx;
   Ktable *ckt = ktable_compact(p->kt);
   if (!ckt) luaL_error(L, "%s:%d: could not compact ktable\n", __FILE__, __LINE__);
-  //  if (ckt == p->kt) return; /* no action was taken by ktable_compact */
 
 #if 0
   /* DEBUGGING */
@@ -1279,9 +1245,9 @@ static void compact_ktable(lua_State *L, Pattern *p) {
   printf("---\n");
 #endif
   /* 
-     Create mapping from old to new.  
-     Note: alloca fails in an odd way, not returning NULL, when
-     ktable_len is large, so using calloc instead.
+     Create mapping from old to new.  Note: alloca fails in an odd way
+     (not returning NULL!), when ktable_len is large, so using calloc
+     instead.
    */
   int *mapping = (int *)calloc(ktable_len(p->kt)+1, sizeof(int));
   if (!mapping) luaL_error(L, "%s:%d: out of memory (while compacting ktable)\n", __FILE__, __LINE__);
@@ -1292,8 +1258,8 @@ static void compact_ktable(lua_State *L, Pattern *p) {
     newidx = ktable_compact_search(ckt, name, len); 
     if (newidx == 0) {
       free(mapping);
-      //printf("incomplete compacted ktable: missing '%.*s'\n", (int) len, name);
-      luaL_error(L, "%s:%d: incomplete compacted ktable\n", __FILE__, __LINE__);
+      luaL_error(L, "%s:%d: incomplete compacted ktable, missing %.*s\n",
+		 __FILE__, __LINE__, (int) len, name);
     }
     mapping[idx] = newidx;
   } 
@@ -1309,11 +1275,9 @@ static Instruction *prepcompile (lua_State *L, Pattern *p) {
   Instruction *code = compile(L, p);
   if (!code)
     /* Other errors will be caught in finalfix() */
-    //luaL_error(L, "internal error in rpeg compiler");
     luaL_error(L, "cannot compile expression containing a precompiled pattern");
   return code;
 }
-
 
 static int lp_printtree (lua_State *L) {
   TTree *tree = getpatt(L, 1, NULL);
@@ -1324,7 +1288,6 @@ static int lp_printtree (lua_State *L) {
   printtree(tree, 0);
   return 0;
 }
-
 
 static int lp_printcode (lua_State *L) {
   Pattern *p = getpattern(L, 1);
@@ -1355,7 +1318,6 @@ static int lp_make_compiled_pattern (lua_State *L, int nsize, Instruction *code,
 
   return 1;
 }
-
 
 static int lp_loadRPLX (lua_State *L) {
   const char *filename;
@@ -1396,54 +1358,78 @@ static int lp_saveRPLX (lua_State *L) {
   return 0;
 }
 
-
 /* ---------------------------------------------------------------------------------------- */
 
-static int dummy[1];
-static void *output_buffer_key = (void *)&dummy[0];
-
-static RBuffer *getbuffer(lua_State *L) {
-  RBuffer *rbuf;
-  int t;
-  /* IF we are reusing the buffer, AND there is one already, then */
-  /* reset it for use */
-  lua_pushlightuserdata(L, output_buffer_key);
-  t = lua_gettable(L, LUA_REGISTRYINDEX);
-  if (t == LUA_TUSERDATA) {
-    r_lua_buffreset(L, -1);
-    return lua_touserdata(L, -1);
-  }
-  /* else make a new one, and IF we are resuing the buffer, save it */
-  /* fprintf(stderr, "Making a new output buffer\n"); fflush(NULL); */
-  rbuf = r_newbuffer(L);
-  lua_pushlightuserdata(L, output_buffer_key);
-  lua_pushvalue(L, -2);		/* Push copy of output buffer */
-  lua_settable(L, LUA_REGISTRYINDEX);
-  /* Leave output buffer on top of stack, just like r_newbuffer does */
-  return rbuf;
-}
-
-/* ---------------------------------------------------------------------------------------- */
-
-/* FUTURE:
+/* 
+ * Monday, July 19, 2021 
+ * In order to have a robust Rust interface to Rosie...
  *
- * Need two distinct do_match functions: one that takes values from
- * Lua stack and puts results there, and one that is totally
- * independent of Lua.
+ * Today, each engine keeps a reusable output buffer for matches.
+ * Remove that from the engine, and instead save the buffer in an rplx
+ * object.  The interface to r_match from Lua will provide that buffer
+ * to vm_match().
  *
  */
 
-/* required args: peg, input
- * optional args: start position, encoding type, total time accumulator, lpeg time accumulator
- * encoding types: debug, byte array, json, input
- * RESTRICTION: only a limited set of capture types are supported
-*/
+static Encoder debug_encoder = { debug_Open, debug_Close };
+static Encoder byte_encoder = { byte_Open, byte_Close };
+static Encoder json_encoder = { json_Open, json_Close };
+static Encoder bool_encoder = { NULL, NULL };
 
-static inline int do_r_match (lua_State *L, int from_lua) {
+static int set_encoder (Encoder *encoder, int etype) {
+  switch (etype) {
+  case ENCODE_BYTE: {
+    *encoder = byte_encoder; break;
+  }
+  case ENCODE_JSON: {
+    *encoder = json_encoder; break;
+  }
+  case ENCODE_LINE: {
+    *encoder = bool_encoder; break;
+  }
+  case ENCODE_BOOL: {
+    *encoder = bool_encoder; break;
+  }
+  case ENCODE_DEBUG: {
+    *encoder = debug_encoder; break;
+  }
+  default: {
+    return 0;			/* error */
+  } }
+  return 1;			/* OK */
+}
+
+/*
+ * Get the initial position for the match, interpreting negative
+ * values from the end of the input string, using Lua convention,
+ * including 1-based indexing.
+ */
+static uint32_t initposition (int pos, size_t len) {
+  if (pos == 0) return 1;	/* 0 means "default to first char" */
+  if (pos > 0) {		/* positive index? */
+    if ((size_t)pos <= len)	/* inside the string? */
+      return (size_t)pos;	/* retain 1-based indexing */
+    else
+      return len+1;		/* crop at the end (1-based index) */
+  }
+  else {				 /* negative index */
+    if ((size_t)(-pos) <= len)	         /* inside the string? */
+      return len - ((size_t)(-pos)) + 1; /* return position from the end */
+    else
+      return 1;			         /* crop at the beginning (1-based) */
+  }
+}
+
+int r_match_lua (lua_State *L);
+int r_match_lua (lua_State *L) {
   Pattern *p;
+  byte_ptr input_ptr;
+  size_t input_len;
+  str input;
   Chunk chunk;
-  Buffer *input;
-  int start, etype, free_input;
+  RBuffer *output;
+  int start, etype, timeflag;
+  struct rosie_matchresult match;
   
   /* FUTURE: remove call to getpatt, thereby allowing ONLY a compiled peg here */
   p = (getpatt(L, 1, NULL), getpattern(L, 1));
@@ -1453,100 +1439,167 @@ static inline int do_r_match (lua_State *L, int from_lua) {
   chunk.ktable = p->kt;
   chunk.filename = NULL;
     
-  /* From lua code, accept Lua string or ROSIE_BUFFER for input */
+  /* From Lua code, accept Lua string or ROSIE_BUFFER as input */
   int input_type = lua_type(L, SUBJIDX);
   switch (input_type) {
   case LUA_TSTRING: { 
-    size_t l;
-    const char *s = luaL_checklstring(L, SUBJIDX, &l);
-    input = buf_from_const(s, l);
-    free_input = 1;		/* true */
+    input_ptr = luaL_checklstring(L, SUBJIDX, &input_len);
     break;
   }
   case LUA_TUSERDATA: {
     RBuffer *rbuf = luaL_testudata(L, SUBJIDX, ROSIE_BUFFER);
     if (rbuf) {
-      input = *rbuf;
-      free_input = 0;		/* false */
+      input_ptr = (*rbuf)->data;
+      input_len = (*rbuf)->n;
       break;
-    }
-  } /* fallthrough */
-  case LUA_TLIGHTUSERDATA: {
-    if (!from_lua) {
-      rstr *rs = lua_touserdata(L, SUBJIDX);
-      if (rs) {
-	input = buf_from_const((char *)rs->ptr, rs->len);
-	free_input = 1;		/* true */
-	break;
-      }
     }
   } /* fallthrough */
   default: 
     return luaL_argerror(L, SUBJIDX, "not rosie buffer or lua string");
   }
       
+  /* Get output buffer argument (required) */
+  output = luaL_testudata(L, SUBJIDX+1, ROSIE_BUFFER);
+  assert(output);
+
   lua_Integer duration0, duration1;
-  start = luaL_optinteger(L, SUBJIDX+1, 1);
-  etype = luaL_optinteger(L, SUBJIDX+2, ENCODE_BYTE);
-  duration0 = luaL_optinteger(L, SUBJIDX+3, 0);	/* total time accumulator */
-  duration1 = luaL_optinteger(L, SUBJIDX+4, 0); /* total time without post-processing */
-
-  /* TODO: Factor the stats struct into a timestats and another one for the rest */
-  Stats stats = {duration0, duration1, 0, 0, 0, 0};
-
-  Encoder debug_encoder = { debug_Open, debug_Close };
-  Encoder byte_encoder = { byte_Open, byte_Close };
-  Encoder json_encoder = { json_Open, json_Close };
-  Encoder noop_encoder = { noop_Open, noop_Close };
-  Encoder encoder;
-  switch (etype) {
-  case ENCODE_DEBUG: { encoder = debug_encoder; break; } /* Debug output */
-  case ENCODE_BYTE: { encoder = byte_encoder; break; }   /* Byte array (compact) */
-  case ENCODE_JSON: { encoder = json_encoder; break; }   /* JSON string */
-  case ENCODE_LINE: { encoder = noop_encoder; break; }	 /* only checks for abend */
-  default: { luaL_error(L, "bad encoder value"); return 0; } /* 'return' suppresses errors */
+  start = luaL_optinteger(L, SUBJIDX+2, 1);
+  etype = luaL_optinteger(L, SUBJIDX+3, ENCODE_BYTE);
+  if (lua_isnoneornil(L, SUBJIDX+4)) {
+    duration0 = 0;
+    duration1 = 0;
+    timeflag = 0;		/* do not collect timing information */
+  } else {
+    duration0 = luaL_optinteger(L, SUBJIDX+4, 0); /* total time accumulator */
+    duration1 = luaL_optinteger(L, SUBJIDX+5, 0); /* total time without post-processing */
+    timeflag = 1;		/* collect timing information */
   }
 
-  Match *match = match_new();
-  assert( match->data == NULL );
-  RBuffer *matchdata = getbuffer(L); /* RBuffer now on lua stack */
-  match->data = *matchdata;	     /* Installed in match struct for reuse */
-  
-  int err = vm_match(&chunk, input, start, encoder, match, &stats);
+  /* FUTURE: Factor the stats struct into a timestats and another one for the rest? */
+  Stats stats = {duration0, duration1, 0, 0, 0, 0};
+
+  Encoder encoder;
+  if (!set_encoder(&encoder, etype))
+    luaL_error(L, "bad encoder value");
+
+  buf_reset(*output);		 /* Reset the buffer for reuse */
+
+  /* Parameter 'start' is allowed to be negative (measures from end) */
+  uint32_t startpos = initposition(start, input_len);
+  assert( startpos >= 1 );
+  assert( startpos <= input_len +1 );
+
+  input = (str) {.ptr = (byte_ptr) input_ptr,
+		 .len = (uint32_t) input_len};
+
+  int err = vm_match2(&chunk,
+		      &input, startpos, 0,
+		      encoder, timeflag,
+		      *output,
+		      &match);
 
   if (err) {
-    match_free(match);
     const char *msg = STRERROR(err, MATCH_MESSAGES);
     luaL_error(L, msg);
   }
 
   if (etype == ENCODE_LINE) {
-    assert( match->data->n == 0 );	/* noop_encoder generates no output */
-    /* expand output buffer if necessary */
-    if (!buf_prepsize(match->data, input->n)) return MATCH_OUT_OF_MEM;
-    /* copy input into output buffer */
-    buf_addlstring_UNSAFE(match->data, input->data, input->n);
+    /* Expand output buffer if necessary */
+    if (!buf_prepsize(*output, input_len)) return MATCH_OUT_OF_MEM;
+    /* Copy input into output buffer */
+    buf_addlstring_UNSAFE(*output, input_ptr, input_len);
   }
 
-  if (free_input) free(input);
-  
-  /* Match data buffer still on stack from call to vm_match */
-  if (!match->matched) lua_pushinteger(L, 0); /* indicate no match */
-  lua_pushinteger(L, match->leftover);	      /* leftover chars */
-  lua_pushboolean(L, match->abend);
+  lua_pushvalue(L, SUBJIDX+1);	             /* outut buffer userdata */
+  /* Indicate no match */
+  if (!match.data.ptr && !match.data.len) lua_pushinteger(L, 0);
+  lua_pushinteger(L, match.leftover);	     /* leftover chars */
+  lua_pushboolean(L, match.abend);
   lua_pushinteger(L, stats.total_time);
   lua_pushinteger(L, stats.match_time);
-  match_free(match);		 /* Does NOT free the data buffer (still on stack) */
-  return 5;			 /* success => 3 values on the stack */
+  return 5;		    /* Return the top 5 values on the stack */
 }
 
-int r_match_lua (lua_State *L);
-int r_match_lua (lua_State *L) {
-  return do_r_match(L, 1);
-}
+#define DISPLAY(msg)							\
+  do { fprintf(stderr, "%s:%d:%s(): %s", __FILE__,			\
+	       __LINE__, __func__, msg);				\
+       fflush(stderr);							\
+  } while (0)
 
-int r_match_C (lua_State *L) {
-  return do_r_match(L, 0);
+#define DISPLAYf(fmt, ...)						\
+  do { fprintf(stderr, "%s:%d:%s(): " fmt, __FILE__,			\
+	       __LINE__, __func__, __VA_ARGS__);			\
+       fflush(stderr);							\
+  } while (0)
+
+/* Wednesday, August 18, 2021
+
+   The librosie layer maintains a registry of compiled patterns, each
+   of which has an associated Buffer that is reused (for performance)
+   across calls to match/trace and related functions.  The buffer
+   grows (monotonically) as needed.  To free it, free the rplx.  Note
+   that compiling a named pattern is fast, so it should fairly
+   efficient to call librosie's free_rplx() and then obtain a fresh
+   one via compile().
+*/
+
+int r_match_C2 (void *pattern_as_void_ptr,
+		struct rosie_string *input, uint32_t startpos, uint32_t endpos,
+		uint8_t etype, uint8_t collect_times,
+		Buffer *output, struct rosie_matchresult *match) {
+  int err;
+  Chunk chunk;
+  Encoder encoder;
+
+  if (!pattern_as_void_ptr) return MATCH_ERR_NULL_PATTERN;
+  if (!input) return MATCH_ERR_NULL_INPUT;
+  if (!output) return MATCH_ERR_NULL_OUTPUT;
+  if (!match) return MATCH_ERR_NULL_MATCHRESULT;
+  /* Note: startpos, endpos are checked in vm_match2() */
+
+  Pattern *p = (Pattern *) pattern_as_void_ptr;
+  if (p->code == NULL) {
+    LOG("internal error: code generator has not run?\n"); 
+    return MATCH_IMPL_ERROR;
+  }
+  chunk.code = p->code;
+  chunk.codesize = p->codesize;
+  chunk.ktable = p->kt;
+  chunk.filename = NULL;
+    
+  if (!set_encoder(&encoder, etype))
+    return MATCH_INVALID_ENCODER;
+
+  buf_reset(output);		/* Reset the buffer for reuse */
+
+  err = vm_match2(&chunk,
+		  input, startpos, endpos,
+		  encoder,
+		  collect_times,
+		  output,
+		  match);
+
+  if (err != 0) return err;
+
+  if (etype == ENCODE_LINE) {
+    /* The "line" encoder passes the bool_encoder to the vm.  Now we
+       interpret the match data and fill the output buffer if
+       necessary. 
+    */
+    assert(match->data.ptr == NULL);
+    if (match->data.len == MATCH_WITHOUT_DATA) {
+      /* Found a match */
+      assert( output->n == 0 ); /* bool_encoder generates no output */
+      /* Expand output buffer if necessary */
+      if (!buf_prepsize(output, (size_t) input->len)) return MATCH_OUT_OF_MEM;
+      /* Copy input into output buffer */
+      buf_addlstring_UNSAFE(output, input->ptr, (size_t) input->len);
+      match->data.ptr = output->data;
+      match->data.len = output->n;
+    }
+  }
+
+  return MATCH_OK;
 }
 
 /*
@@ -1584,8 +1637,6 @@ static struct luaL_Reg pattreg[] = {
   {"pcode", lp_printcode},
   {"B", lp_behind},
   {"V", lp_V},
-/*   {"C", lp_simplecapture}, */
-/*   {"Cp", lp_poscapture}, */
   {"P", lp_P},
   {"S", lp_set},
   {"R", lp_range},

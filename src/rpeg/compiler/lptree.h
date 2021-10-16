@@ -5,7 +5,6 @@
 #if !defined(lptree_h)
 #define lptree_h
 
-
 #include "config.h"
 #include "lptypes.h" 
 #include "ktable.h"
@@ -58,7 +57,7 @@ typedef enum TTag {
  * code that remains from lpeg.
  *
  */
-typedef struct TTree {
+typedef struct TTree_type {
   byte tag;
   byte cap;		/* kind of capture (if it is a capture) */
   int32_t key;		/* key in ktable for capture name (0 if no key) */
@@ -67,7 +66,6 @@ typedef struct TTree {
     int n;		/* occasional counter */
   } u;
 } TTree;
-
 
 /*
  * A pattern constructed by the compiler has a tree and a ktable. (The
@@ -80,13 +78,12 @@ typedef struct TTree {
  *
  * A compiled pattern restored from a file has no tree.
  */
-typedef struct Pattern {
+typedef struct Pattern_type {
   union Instruction *code;
   int codesize;
   Ktable *kt;
   TTree tree[1];		/* tree must be last, because it will grow */
 } Pattern;
-
 
 /* number of siblings for each tree */
 /* extern const byte numsiblings[]; */
@@ -94,7 +91,6 @@ typedef struct Pattern {
 /* access to siblings */
 #define sib1(t)         ((t) + 1)
 #define sib2(t)         ((t) + (t)->u.ps)
-
 
 #endif
 

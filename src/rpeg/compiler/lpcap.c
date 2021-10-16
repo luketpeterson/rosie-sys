@@ -19,21 +19,26 @@
 #include <string.h>
 #include <time.h>
 
-/* #include "rcap.h" */
+#include "lptree.h"
 #include "rpeg.h"
 #include "ktable.h" 
 #include "ktable-macros.h"
 
-#define check_bounds(s,e) if (*(s) > *(e)) luaL_error(L, "corrupt match data (buffer overrun)");
+#define check_bounds(s,e,n) do {					\
+  if (*(s)+n > (e))							\
+    luaL_error(L, "corrupt match data (buffer overrun) by %d at %s:%d", \
+	       (e) - *(s),						\
+	       __FILE__, __LINE__);					\
+  } while (0);
 
-/* See byte encoder in rcap.c */
-static void pushmatch(lua_State *L, const char **s, const char **e, int depth) {
+/* See byte encoder in capture.c */
+static void pushmatch (lua_State *L, const char **s, const char *e, int depth) {
   int top;
   short shortlen;
   int pos;
   int n = 0;
+  check_bounds(s, e, 4);	/* ensure we can read an int */
   pos = r_readint(s);
-  check_bounds(s, e);
   
   if ((pos) > 0) luaL_error(L, "corrupt match data (expected start marker)");
 
@@ -43,6 +48,7 @@ static void pushmatch(lua_State *L, const char **s, const char **e, int depth) {
   lua_pushinteger(L, -(pos)); 
   lua_rawset(L, -3);		/* match["s"] = start position */ 
 
+  check_bounds(s, e, 2);
   shortlen = r_readshort(s);	/* length of typename string */
   if (shortlen <= 0) {
     /* The typename cannot be empty string; neg length (or 0) means
@@ -51,26 +57,26 @@ static void pushmatch(lua_State *L, const char **s, const char **e, int depth) {
     lua_pushlstring(L, *s, (size_t) -shortlen);	
     lua_rawset(L, -3);		/* match["type"] = name */ 
     (*s) += -shortlen;		/* advance to first char after */
-    check_bounds(s, e);
+    check_bounds(s, e, 2);
     shortlen = r_readshort(s);	/* length of const data string */
     if (shortlen < 0) luaL_error(L, "corrupt match data (expected length of const cap data)");
     lua_pushliteral(L, "data"); 
     lua_pushlstring(L, *s, (size_t) shortlen);	
     lua_rawset(L, -3);		/* match["data"] = const capture value */ 
     (*s) += shortlen;		/* advance to first char after */
-    check_bounds(s, e);
+    check_bounds(s, e, 0);
   } else {
     /* Regular captures */
     lua_pushliteral(L, "type");
     lua_pushlstring(L, *s, (size_t) shortlen);	
     lua_rawset(L, -3);		/* match["type"] = name */ 
     (*s) += shortlen;		/* advance to first char after name */
-    check_bounds(s, e);
+    check_bounds(s, e, 0);
   }
 
   /* process subs, if any */
   top = lua_gettop(L);
-  while (r_peekint(s) < 0) {
+  while (r_peekint(*s) < 0) {
     pushmatch(L, s, e, depth++);
     n++;
   } 
@@ -86,12 +92,11 @@ static void pushmatch(lua_State *L, const char **s, const char **e, int depth) {
     lua_rawset(L, -3);		/* match["subs"] = subs table */    
   }    
 
+  check_bounds(s, e, 4);
   pos = r_readint(s);  
-  check_bounds(s, e);
   lua_pushliteral(L, "e");  
   lua_pushinteger(L, pos);  
   lua_rawset(L, -3);		/* match["e"] = end position */  
-  check_bounds(s, e);
 
   /* leave match table on the stack */
 }
@@ -99,12 +104,16 @@ static void pushmatch(lua_State *L, const char **s, const char **e, int depth) {
 int r_lua_decode (lua_State *L) {
   RBuffer *rbuf = (RBuffer *)luaL_checkudata(L, 1, ROSIE_BUFFER); 
   Buffer *buf = *rbuf;
-  const char *s = buf->data;	/* start of data */ 
-  const char *e = buf->data + buf->n; /* end of data */ 
+  const char *s = buf->data;	      /* start of data */ 
+  const char *e = buf->data + buf->n; /* 1 byte beyond last valid data byte */ 
   lua_Integer t0 = (lua_Integer) clock();
   lua_Integer duration = luaL_optinteger(L, 2, 0); /* time accumulator */
-  if (buf->n == 0) lua_pushnil(L);
-  else { pushmatch(L, &s, &e, 0); }
+  if (buf->n == 0) {
+    lua_pushnil(L);
+  }
+  else {
+    pushmatch(L, &s, e, 0);
+  }
   lua_pushinteger(L, ((lua_Integer) clock()-t0)+duration); /* processing time */  
   return 2;
 }

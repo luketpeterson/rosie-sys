@@ -90,7 +90,7 @@ clean:
 lpcap.o: lpcap.c lpcap.h rbuf.c $(COMMONDIR)/rbuf.h lptypes.h $(COMMONDIR)/rpeg.h ktable-macros.h
 lpcode.o: lpcode.c lptypes.h lpcode.h lptree.h lpcap.h 
 lpprint.o: lpprint.c lptypes.h lpprint.h lptree.h lpcap.h
-lptree.o: lptree.c lptypes.h lpcap.h lpcode.h lptree.h lpprint.h $(COMMONDIR)/rpeg.h ktable-macros.h
+lptree.o: lptree.c lptypes.h lpcap.h lpcode.h lptree.h lpprint.h $(COMMONDIR)/str.h $(COMMONDIR)/rpeg.h ktable-macros.h
 rbuf.o: rbuf.c $(COMMONDIR)/rbuf.h 
 rcap.o: rcap.c $(COMMONDIR)/rcap.h $(COMMONDIR)/rbuf.h lpcap.h $(COMMONDIR)/ktable-macros.h
 lpsave.o: lpsave.c lptypes.h lpsave.h lptree.h lpcap.h $(COMMONDIR)/ktable-macros.h
