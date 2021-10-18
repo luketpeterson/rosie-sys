@@ -945,6 +945,7 @@ int rosie_match2 (Engine *e, uint32_t pat, char *encoder_name,
     assert(output);
     buf_reset(*output);		/* Reset the buffer for reuse */
     buf_addlstring(*output, temp_str, temp_len);
+    match->data.len = temp_len;
   } /* end of lua-implemented encoder invocation */
 
  call_succeeded:
