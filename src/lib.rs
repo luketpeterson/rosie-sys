@@ -219,9 +219,8 @@ impl LibRosieTraceFormat for TraceFormat {
 /// **NOTE**: Cloning / Copying this ptr type does not copy the engine, just the reference to the engine.
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct EnginePtr<'a> {
+pub struct EnginePtr {
     pub e: *mut c_void, //This pointer really has a lifetime of 'a, hence the phantom
-    phantom: PhantomData<&'a u8>,
 }
 
 /// A structure containing the match results from a [rosie_match] call.
