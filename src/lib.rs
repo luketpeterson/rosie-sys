@@ -258,7 +258,7 @@ impl LibRosieMatchResult for RawMatchResult<'_> {
     }
 }
 
-impl RawMatchResult<'_> {
+impl <'a>RawMatchResult<'a> {
     /// Returns `true` if the pattern was matched in the input, otherwise returns `false`.
     pub fn did_match(&self) -> bool {
         if self.data.is_valid() {
@@ -274,9 +274,17 @@ impl RawMatchResult<'_> {
     pub fn as_bytes(&self) -> &[u8] {
         self.data.as_bytes()
     }
+    /// Returns the raw buffer, outputted by the encoder during the match operation, consuming the RawMatchResult
+    pub fn into_bytes(self) -> &'a [u8] {
+        self.data.into_bytes()
+    }
     /// Returns the match buffer, interpreted as a UTF-8 string
     pub fn as_str(&self) -> &str {
         self.data.as_str()
+    }
+    /// Returns the match buffer, interpreted as a UTF-8 string, consuming the RawMatchResult
+    pub fn into_str(self) -> &'a str {
+        self.data.into_str()
     }
     /// Returns the total time, in microseconds, elapsed during the call to [rosie_match] inside librosie.
     pub fn time_elapsed_total(&self) -> usize {
