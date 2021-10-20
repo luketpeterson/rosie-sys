@@ -1,11 +1,16 @@
 #![crate_name = "rosie_sys"]
 
+#![doc(html_logo_url = "https://rosie-lang.org/images/rosie-circle-blog.png")]
+//GOAT, Question for Jamie, can she host a version of this logo that doesn't have a border?  i.e. just the circle occupying the whole frame, with an alpha-channel so the corners are transparent
+
 //! # rosie-sys Overview
 //! This crate builds the `librosie` library for the [**Rosie**](https://rosie-lang.org/about/) matching engine and the [**Rosie Pattern Language**](https://gitlab.com/rosie-pattern-language/rosie/-/blob/master/README.md)\(`rpl`\).
 //! 
 //! The majority of users wishing to use Rosie in Rust should probably use the [rosie-rs crate](https://crates.io/crates/rosie-rs).
 //! 
 
+use core::fmt;
+use core::fmt::Display;
 use std::marker::PhantomData;
 use std::ptr;
 use std::slice;
@@ -85,6 +90,12 @@ impl RosieString<'_> {
     }
     pub fn len(&self) -> usize {
         usize::try_from(self.len).unwrap()
+    }
+}
+
+impl Display for RosieString<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -228,6 +239,7 @@ pub struct EnginePtr {
 /// **NOTE**: A RawMatchResult points to memory inside the engine that is associated with the pattern, therefore you may
 /// not perform any additional matching with that pattern until the RawMatchResult has been released.  This is enforced with
 /// borrowing semantics in the rosie-rs crate's `Pattern::match_raw` method, but in the sys crate it's on your honor.
+//GOAT, This text is appearing twice.  Not good
 #[repr(C)]
 #[derive(Debug)]
 pub struct RawMatchResult<'a> {
