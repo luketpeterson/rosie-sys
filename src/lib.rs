@@ -4,10 +4,40 @@
 //GOAT, Question for Jamie, can she host a version of this logo that doesn't have a border?  i.e. just the circle occupying the whole frame, with an alpha-channel so the corners are transparent
 
 //! # rosie-sys Overview
-//! This crate builds the `librosie` library for the [**Rosie**](https://rosie-lang.org/about/) matching engine and the [**Rosie Pattern Language**](https://gitlab.com/rosie-pattern-language/rosie/-/blob/master/README.md)\(`rpl`\).
+//! This crate builds or links the `librosie` library for the [**Rosie**](https://rosie-lang.org/about/) matching engine and the [**Rosie Pattern Language**](https://gitlab.com/rosie-pattern-language/rosie/-/blob/master/README.md)\(`rpl`\).
 //! 
-//! The majority of users wishing to use Rosie in Rust should probably use the [rosie-rs crate](https://crates.io/crates/rosie-rs).
+//! The majority of users wishing to use Rosie in Rust should probably use the [rosie crate](https://crates.io/crates/rosie).
 //! 
+//! ## In Cargo.toml
+//! To build Rosie as part of your project, add the following line to your Cargo.toml `[dependencies]` section:
+//! 
+//! `rosie = { features = ["build_static_librosie"] }
+//! 
+//! To build Rosie to link against a shared librosie, already installed on the system, add the following line instead:
+//! 
+//! `rosie = { features = ["link_shared_librosie"] }
+//! 
+//! ## Deployment
+//! 
+//! Rosie depends on a `rosie_home` directory, containing support files including the Standard Pattern Library. See the
+//! `Deployment` section of the [rosie-sys] crate for deployment instructions.
+//! 
+//! ## Installation
+//! This crate dynamically links against the `librosie` library already installed on the target system.  Therefore `librosie` must be installed prior to using this crate.
+//! 
+//! Complete installation info is [here](https://gitlab.com/rosie-pattern-language/rosie#local-installation).
+//! However, Rosie may be available through your package-manager of choice.  For example, you may run one of the following:
+//! 
+// * `apt-get install rosie`  Q-01.05 QUESTION apt packaged needed!!
+//! * `dnf install rosie`
+//! * `brew install rosie`
+//! 
+//! Or if you would prefer to install Rosie from source, [Here](https://rosie-lang.org/blog/2020/05/03/new-build.html) are instructions.
+//! 
+//! **NOTE**: This crate has been tested aganst `librosie` version **1.2.2**, although it may be compatible with other versions.
+//! 
+//! **NOTE**: In the future, I would like to create a rosie-sys crate, that could build `librosie` from source, and also provide an option for static linking.
+// (Q-01.02 QUESTION & Q-01.01 QUESTION)
 
 use core::fmt;
 use core::fmt::Display;
@@ -30,7 +60,7 @@ use libc::{size_t, c_void};
 /// this and then decided against it after seeing how it looked and realizing there was very little need to expose
 /// librosie strings to Rust directly.
 ///
-/// RosieString is used for communicating with the C API.  The rosie-rs crate exposes a specialized variant called
+/// RosieString is used for communicating with the C API.  The rosie high-level crate exposes a specialized variant called
 /// RosieMessage.  A RosieMessage is a RosieString that was allocated by librosie, but where the librosie client is
 /// responsible for freeing it.  Therefore, RosieMessage implements the Rust Drop trait to clean up its buffer when it
 /// is no longer needed.
@@ -101,7 +131,7 @@ impl Display for RosieString<'_> {
 
 /// An error code from a Rosie operation 
 //
-//WARNING!!!!  This enum is shadowed in the rosie-rs crate, in the `src/sys_shadow.rs` file.  DON'T MODIFY IT WITHOUT UPDATING THE SHADOW
+//WARNING!!!!  This enum is shadowed in the rosie high-level crate, in the `src/sys_shadow.rs` file.  DON'T MODIFY IT WITHOUT UPDATING THE SHADOW
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum RosieError {
     /// No error occurred.
@@ -136,7 +166,7 @@ impl RosieError {
     }
 }
 
-/// An Encoder Module used to format the results, when using [rosie_match].
+// NOTE: Leaving undocumented because documenting it here confuses the re-exported documentation. Here is the original doc -> /// An Encoder Module used to format the results, when using [rosie_match].
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum MatchEncoder {
     /// The simplest and fastest encoder.  Outputs `true` if the pattern matched and `false` otherwise.
@@ -164,7 +194,7 @@ pub enum MatchEncoder {
 /// [MatchEncoder] methods to interface with librosie.
 /// 
 /// The purpose of this trait, as opposed to including the methods in `impl MatchEncoder` is that [MatchEncoder] will
-/// be re-exported by rosie-rs, whereas these methods are used inside the implementation of rosie-rs.
+/// be re-exported by the `rosie` high-level crate, whereas these methods are used inside the implementation of the crate itself.
 pub trait LibRosieMatchEncoder {
     fn as_bytes(&self) -> &[u8];
 }
@@ -192,7 +222,7 @@ impl MatchEncoder {
     }
 }
 
-/// A format for debugging output, to be used with [rosie_trace]
+// NOTE: Leaving undocumented because documenting it here confuses the re-exported documentation. Here is the original doc -> /// A format for debugging output, to be used with [rosie_trace]
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum TraceFormat {
     /// The complete trace data, formatted as JSON 
@@ -207,7 +237,7 @@ pub enum TraceFormat {
 /// [TraceFormat] methods to interface with librosie.
 /// 
 /// The purpose of this trait, as opposed to including the methods in `impl TraceFormat` is that [TraceFormat] will
-/// be re-exported by rosie-rs, whereas these methods are used inside the implementation of rosie-rs.
+/// be re-exported by the `rosie` high-level crate, whereas these methods are used inside the implementation of the crate itself.
 pub trait LibRosieTraceFormat {
     fn as_bytes(&self) -> &[u8];
 }
@@ -234,12 +264,11 @@ pub struct EnginePtr {
     pub e: *mut c_void, //This pointer really has a lifetime of 'a, hence the phantom
 }
 
-/// A structure containing the match results from a [rosie_match] call.
-/// 
-/// **NOTE**: A RawMatchResult points to memory inside the engine that is associated with the pattern, therefore you may
-/// not perform any additional matching with that pattern until the RawMatchResult has been released.  This is enforced with
-/// borrowing semantics in the rosie-rs crate's `Pattern::match_raw` method, but in the sys crate it's on your honor.
-//GOAT, This text is appearing twice.  Not good
+// NOTE: Leaving undocumented because documenting it here confuses the re-exported documentation. Here is the original doc -> /// A structure containing the match results from a [rosie_match] call.
+// original docs -> /// 
+// original docs -> /// **NOTE**: A RawMatchResult points to memory inside the engine that is associated with the pattern, therefore you may
+// original docs -> /// not perform any additional matching with that pattern until the RawMatchResult has been released.  This is enforced with
+// original docs -> /// borrowing semantics in the rosie high-level crate's `Pattern::match_raw` method, but in the sys crate it's on your honor.
 #[repr(C)]
 #[derive(Debug)]
 pub struct RawMatchResult<'a> {
@@ -253,7 +282,7 @@ pub struct RawMatchResult<'a> {
 /// [RawMatchResult] methods to interface with librosie.
 /// 
 /// The purpose of this trait, as opposed to including the methods in `impl RawMatchResult` is that [RawMatchResult] will
-/// be re-exported by rosie-rs, whereas these methods are used inside the implementation of rosie-rs.
+/// be re-exported by the `rosie` high-level crate, whereas these methods are used inside the implementation of the crate itself.
 pub trait LibRosieMatchResult {
     fn empty() -> Self;
 }
@@ -312,9 +341,9 @@ impl <'a>RawMatchResult<'a> {
 
 /// Returns the path to a rosie_home dir, that is valid at the time the rosie-sys crate is built
 /// 
-/// The purpose of this function is so that a rosie-rs crate can operate without needing to be configured on
-/// systems where the rosie_home dir isn't installed.  This is not a substitute for installing the
-/// rosie_home dir in a more appropriate location
+/// The purpose of this function is so that a high-level rosie crate can operate without needing to be configured on
+/// systems where the rosie_home dir isn't installed.  This is not a substitute for installing the rosie_home dir
+/// in a more appropriate location
 ///
 /// TODO: In the future, we should embed the CONTENTS of the rosie_home into the binary, not just the path
 pub fn rosie_home_default() -> Option<&'static str> {
@@ -387,7 +416,7 @@ fn librosie() {
 
     //WARNING: I'm not doing a thorough job with error handling and cleanup in this test.
     // This is NOT a good template to use for proper use of Rosie.  You really should
-    // use the rosie-rs crate to call Rosie from Rust.
+    // use the high-level rosie crate to call Rosie from Rust.
 
     //Init the Rosie home directory, if we have the rosie_home_default()
     let mut message_buf = RosieString::empty();
