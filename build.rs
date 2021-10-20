@@ -321,14 +321,6 @@ fn librosie_src_build() -> bool {
     //Tell cargo so anyone who depends on this crate can find our lib.  I.e. so cargo will set `DEP_ROSIE_LIB` 
     println!("cargo:lib={}", rosie_lib_dir.display());
 
-
-    //GOAT, NEED to write a README file detailing every component that I harvested from the main Rosie repo
-    //  GOAT, Document the link_shared_librosie & build_static_librosie Cargo features.  2 ways to use this crate.
-    //  GOAT, Document the DEP_ROSIE_INCLUDE and DEP_ROSIE_LIB env vars, but only if link_shared_librosie is not set
-    //  GOAT, mention "--features build_static_librosie" can be used as a cargo arg, if you want to test this crate
-
-    // GOAT, in rosie-rs, also mention that we can run the tests like this:  cargo test --features build_static_librosie or --features link_shared_librosie
-
     //GOAT, Look at fixing the warnings caused by lua-cjson
 
     true
