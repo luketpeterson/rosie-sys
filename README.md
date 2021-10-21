@@ -2,7 +2,7 @@
 # rosie-sys Overview
 This crate builds or links the `librosie` library for the [**Rosie**](https://rosie-lang.org/about/) matching engine and the [**Rosie Pattern Language**](https://gitlab.com/rosie-pattern-language/rosie/-/blob/master/README.md)\(`rpl`\).
 
-The majority of users wishing to use Rosie in Rust should probably use the [rosie crate](https://crates.io/crates/rosie).
+The majority of users wishing to use Rosie in Rust should probably use the [rosie crate](https://github.com/luketpeterson/rosie-rs).
 
 # Building vs. Linking librosie
 This crate can either build `librosie` from source or link to an existing library.
@@ -52,7 +52,7 @@ Or if you would prefer to install Rosie via the Makefile, [Look Here](https://ro
 **NOTE**: This crate has been tested aganst `librosie` version **1.X.X**, although it may be compatible with other versions.
 DONOTPUBLISH: Update actual version when it's released, instead of X.X
 
-# Updating this crate to newer versions of the Rosie source
+# Updating the Rosie source inside this crate
 
 Many files within this crate are copied from either the main [Rosie source](https://gitlab.com/rosie-pattern-language/rosie)
 or the build products.
