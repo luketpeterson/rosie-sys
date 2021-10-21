@@ -54,7 +54,7 @@
 //! Or if you would prefer to install Rosie via the Makefile, [Look Here](https://rosie-lang.org/blog/2020/05/03/new-build.html).
 //! 
 //! **NOTE**: This crate has been tested aganst `librosie` version **1.X.X**, although it may be compatible with other versions.
-//! TODO: Update actual version when it's released
+//! DONOTPUBLISH: Update actual version when it's released, instead of X.X
 //! 
 //! # Updating this crate to newer versions of the Rosie source
 //! 
@@ -79,6 +79,9 @@
 //! cp -r rosie/build/lib/rosie/lib rosie-sys/src/rosie_home/lib
 //! cp -r rosie/build/lib/rosie/rpl rosie-sys/src/rosie_home/rpl
 //! ```
+//! 
+//! **NOTE** The lua-cjson files have some changes to squish a few warnings, that are not propagated upstream.  Since it's
+//! unlikely to change, perhaps skip taking lua-cjson from upstream.
 //! 
 
 use core::fmt;

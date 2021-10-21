@@ -321,8 +321,6 @@ fn librosie_src_build() -> bool {
     //Tell cargo so anyone who depends on this crate can find our lib.  I.e. so cargo will set `DEP_ROSIE_LIB` 
     println!("cargo:lib={}", rosie_lib_dir.display());
 
-    //GOAT, Look at fixing the warnings caused by lua-cjson
-
     true
 }
 
