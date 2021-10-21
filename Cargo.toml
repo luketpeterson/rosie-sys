@@ -1,9 +1,17 @@
+cargo-features = ["edition2021"]
+
 [package]
 name = "rosie-sys"
-version = "0.1.0"
-edition = "2018"
+version = "0.1.0" #DONOTPUBLISH, Include a version that reflects the underlying Rosie source
+edition = "2021"
 authors = ["Luke Peterson <luke@infoplatter.com>"]
 license = "MIT OR Apache-2.0"
+description = "A crate to build or link to librosie to access the Rosie Pattern Language"
+repository = "https://github.com/luketpeterson/rosie-sys/"
+readme = "README.md"
+homepage = "https://rosie-lang.org/about/"
+keywords = ["rosie", "pattern", "match", "matching", "FSA", "regex"]
+categories = ["text-processing"]
 links = "rosie"
 build = "build.rs"
 
