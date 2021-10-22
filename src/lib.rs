@@ -1,7 +1,7 @@
 #![crate_name = "rosie_sys"]
 
 #![doc(html_logo_url = "https://rosie-lang.org/images/rosie-circle-blog.png")]
-//GOAT, Question for Jamie, can she host a version of this logo that doesn't have a border?  i.e. just the circle occupying the whole frame, with an alpha-channel so the corners are transparent
+//Q-06.04, Can Jamie host a version of this logo that doesn't have a border?  i.e. just the circle occupying the whole frame, with an alpha-channel so the corners are transparent
 
 #![doc = include_str!("../README.md")]
 
