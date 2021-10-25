@@ -69,7 +69,7 @@
  *  NOTE: indexes into Ktable are 1-based
  */
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
 #endif
 

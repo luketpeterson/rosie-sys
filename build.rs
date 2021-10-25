@@ -129,7 +129,7 @@ fn librosie_src_build() -> bool {
     
     //This is needed so the librosie we're about to build will succeed in linking with the mlua output lib
     println!("cargo:rustc-link-search={}", lua_lib_dir.display());
-    println!("cargo:rustc-link-lib=lua5.3");
+    println!("cargo:rustc-link-lib=static=lua5.3");
 
     //The C src files needed to build librosie
     let compile_src_files : Vec<PathBuf> = vec![
@@ -166,6 +166,7 @@ fn librosie_src_build() -> bool {
     cfg.define("LPEG_DEBUG", None); // Needed by the rpeg compiler build
     cfg.define("NDEBUG", None); // Needed by the rpeg compiler and librosie build
     cfg.define("LUA_COMPAT_5_2", None); // Needed by the librosie build
+    cfg.define("_GNU_SOURCE", None); // Required to access libdl on Linux and harmless on Mac
     cfg.files(compile_src_files.iter());
     cfg.compile("rosie");
     println!("cargo:rerun-if-changed=src");

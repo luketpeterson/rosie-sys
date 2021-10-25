@@ -81,7 +81,7 @@
  *   librosiel.so   lua for rosie
  */
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
 #endif
 
@@ -93,7 +93,7 @@
 
 #if defined(__linux__)
 #if !defined(__clang__)
-#include <bsd/stdio.h>
+#include <stdio.h>
 #endif
 #endif
 

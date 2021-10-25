@@ -8,7 +8,7 @@
 /*  LICENSE: MIT License (https://opensource.org/licenses/mit-license.html)  */
 /*  AUTHOR: Jamie A. Jennings                                                */
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
 #endif
 
