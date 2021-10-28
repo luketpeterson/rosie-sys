@@ -112,7 +112,7 @@ pub enum RosieError {
     /// A failure occurred in the `librosie` engine.
     EngineCallFailed = -4,
     /// An error related to a pattern input has occurred, for example, an `rpl` syntax error.
-    PatternError = -1001,
+    ExpressionError = -1001,
     /// An error related to a package input has occurred, for example a missing package or `.rpl` file,
     /// a missing package declaration in the file, or another syntax error in the package.rpl file.
     PackageError = -1002,
@@ -127,6 +127,9 @@ impl RosieError {
             -2 => RosieError::OutOfMemory,
             -3 => RosieError::SysCallFailed,
             -4 => RosieError::EngineCallFailed,
+            -1001 => RosieError::ExpressionError,
+            -1002 => RosieError::PackageError,
+            -1003 => RosieError::ArgError,
             _ => RosieError::MiscErr
         }
     }
@@ -234,7 +237,7 @@ pub struct EnginePtr {
 // original docs -> /// 
 // original docs -> /// **NOTE**: A RawMatchResult points to memory inside the engine that is associated with the pattern, therefore you may
 // original docs -> /// not perform any additional matching with that pattern until the RawMatchResult has been released.  This is enforced with
-// original docs -> /// borrowing semantics in the rosie high-level crate's `Pattern::match_raw` method, but in the sys crate it's on your honor.
+// original docs -> /// borrowing semantics in the rosie high-level crate's `Pattern::raw_match` method, but in the sys crate it's on your honor.
 #[repr(C)]
 #[derive(Debug)]
 pub struct RawMatchResult<'a> {
@@ -356,6 +359,8 @@ extern "C" {
     // int rosie_block_deps(Engine *e, str *input, str *deps, str *messages);
     // int rosie_parse_expression(Engine *e, str *input, str *parsetree, str *messages);
     // int rosie_parse_block(Engine *e, str *input, str *parsetree, str *messages);
+
+    pub fn rosie_import_expression_deps(e : EnginePtr, expression : *const RosieString, pkgs : *mut RosieString, err : *mut i32 , messages : *mut RosieString) -> i32; // int rosie_import_expression_deps (Engine *e, str *expression, str *pkgs, int *err, str *messages);
 }
 
 #[test]

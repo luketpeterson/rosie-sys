@@ -135,4 +135,28 @@ int rosie_match2 (Engine *e, uint32_t pat, char *encoder_name,
 		  struct rosie_matchresult *match,
 		  uint8_t collect_times);
 
+/* LP: Jamie to Review.
+   New (Oct, 2021) interface to provice C-API access to the CLI functionality
+   to automatically parse an expression and load its dependencies.  This
+   is equivalent to calling `rosie_expression_deps()`, parsing the returned
+   JSON, and then calling `rosie_import()` on each returned package.
+
+   in: e, expression
+   out: pkgs, err, messages
+
+   `pkgs` is a JSON-encoded list of the packages that the expression requires,
+   regardless of whether they were already loaded.
+
+   NOTE: Either `pkgs`, `err`, or both may be NULL and this function will
+   still work, but that input will not be provided.  Passing NULL to `pkgs`
+   will skip serializing to JSON. 
+
+   NOTE: This function will return a non-zero error code only in the case of
+   an internal failure, however the *err parameter may be set in the case of
+   an invalid expression, a missing package, etc.
+*/
+
+int rosie_import_expression_deps (Engine *e, str *expression,
+        str *pkgs, int *err, str *messages);
+
 #endif

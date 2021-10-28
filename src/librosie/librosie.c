@@ -327,6 +327,10 @@ static int to_json_string (lua_State *L, int pos, str *json_string) {
      lua_pushnil(L);
      //if (!lua_next(L, pos-1)) { //TODO: LP: Discuss this with Jamie.  I think this was a bug
      if (!lua_next(L, -2)) {
+       /* We have an empty table, so an empty string is a valid way to render an empty table
+        in JSON.  So would "{ }", but we'll keep the function's existing behavior.
+        We want to leave the stack the way we found it, hence the pop off the table and the encoder function */
+       lua_pop(L, 2);
        return LUA_OK;
      } else {
        lua_pop(L, 2);
@@ -340,17 +344,18 @@ static int to_json_string (lua_State *L, int pos, str *json_string) {
        /* Top of stack is error msg */
        LOG("call to json encoder returned more than one value\n");
        if (lua_isstring(L, -1) && lua_isnil(L, -2)) {
-	 LOGf("error message from json encoder: %s\n", lua_tolstring(L, -1, NULL));
-	 return ERR_SYSCALL_FAILED;
+        LOGf("error message from json encoder: %s\n", lua_tolstring(L, -1, NULL));
+        return ERR_SYSCALL_FAILED;
        }
        else {
-	 /* Something really strange happened!  Is there any useful info to return? */
-	 LOG("call to json encoder returned unexpected values\n");
-	 return ERR_SYSCALL_FAILED;
+        /* Something really strange happened!  Is there any useful info to return? */
+        LOG("call to json encoder returned unexpected values\n");
+        return ERR_SYSCALL_FAILED;
        }
      }
      str = (byte_ptr) lua_tolstring(L, -1, &len);
      *json_string = rosie_new_string(str, len);
+     lua_pop(L, 1); /* Pop the string, so the stack ends up the way we got it */
      return LUA_OK;
 }
 
@@ -1317,7 +1322,7 @@ int rosie_matchfile (Engine *e, int pat, char *encoder, int wholefileflag,
    the Rosie CLI will attempt to import the `net` library.
  */
 
-static int rosie_syntax_op (const char *fname, Engine *e, str *input, str *refs, str *messages) {
+static int rosie_syntax_op (const char *fname, Engine *e, str *input, str *f_str_result, int *f_int_result, str *messages) {
   int t;
   str r;
   lua_State *L = e->L;
@@ -1325,11 +1330,11 @@ static int rosie_syntax_op (const char *fname, Engine *e, str *input, str *refs,
   ACQUIRE_ENGINE_LOCK(e);
   lua_pushnil(L);			      /* stack: nil */
   get_registry(engine_key);		      /* stack: engine, nil */
-  t = lua_getfield(L, -1, fname); /* stack: expression_refs, engine, nil */
-  CHECK_TYPE("expression_refs", t, LUA_TFUNCTION);
-  lua_replace(L, 1);		/* stack: engine, expression_refs */
+  t = lua_getfield(L, -1, fname); /* stack: function, engine, nil */
+  CHECK_TYPE(fname, t, LUA_TFUNCTION);
+  lua_replace(L, 1);		/* stack: engine, function */
   lua_pushlstring(L, (const char *)input->ptr, input->len);
-  /* stack: input, engine, expression_refs */
+  /* stack: input, engine, function */
   assert(lua_gettop(L) == 3);
   t = lua_pcall(L, 2, 2, 0); 
   if (t != LUA_OK) {  
@@ -1345,23 +1350,29 @@ static int rosie_syntax_op (const char *fname, Engine *e, str *input, str *refs,
     if (t == LUA_OK) {
       messages->len = r.len;
       messages->ptr = r.ptr;
-      lua_pop(L, 2);		/* pop json string and function */
     } else {
       LOG("could not convert messages to json\n");
       *messages = rosie_new_string_from_const("error: could not convert messages to json");      
       goto rosie_syntax_op_failed;
     }
   }
-  if (lua_istable(L, -2)) {
-    LOG("there are refs\n");
-    t = to_json_string(L, -2, &r);
-    if (t == LUA_OK) {
-      refs->len = r.len;
-      refs->ptr = r.ptr;
-    } else {
-      LOG("could not convert refs table to json\n");
-      *messages = rosie_new_string_from_const("error: could not convert refs table to json");      
-      goto rosie_syntax_op_failed;
+  if (lua_istable(L, -2)) { // If the Lua function returned a table, convert it to JSON and return it in f_str_result
+    if (f_str_result) {
+      LOG("there are refs\n"); //LP: Discuss with Jamie: This log might be misleading, but I didn't want to mess with anyone who might be parsing the logs
+      t = to_json_string(L, -2, &r);
+      if (t == LUA_OK) {
+        f_str_result->len = r.len;
+        f_str_result->ptr = r.ptr;
+      } else {
+        LOG("could not convert result table to json\n");
+        *messages = rosie_new_string_from_const("error: could not convert result table to json");
+        goto rosie_syntax_op_failed;
+      }
+    }
+  }
+  if (lua_isinteger(L, -2)) { // If the Lua function returned an integer, return it directly in f_num_result
+    if (f_int_result) {
+      *f_int_result = lua_tointeger(L, -2);
     }
   }
   lua_settop(L, 0);
@@ -1371,32 +1382,37 @@ static int rosie_syntax_op (const char *fname, Engine *e, str *input, str *refs,
 
 EXPORT
 int rosie_expression_refs (Engine *e, str *input, str *refs, str *messages) {
-  return rosie_syntax_op("expression_refs", e, input, refs, messages);
+  return rosie_syntax_op("expression_refs", e, input, refs, NULL, messages);
 }
 
 EXPORT
 int rosie_block_refs (Engine *e, str *input, str *refs, str *messages) {
-  return rosie_syntax_op("block_refs", e, input, refs, messages);
+  return rosie_syntax_op("block_refs", e, input, refs, NULL, messages);
 }
 
 EXPORT
 int rosie_expression_deps (Engine *e, str *input, str *deps, str *messages) {
-  return rosie_syntax_op("expression_dependencies", e, input, deps, messages);
+  return rosie_syntax_op("expression_dependencies", e, input, deps, NULL, messages);
 }
 
 EXPORT
 int rosie_block_deps (Engine *e, str *input, str *deps, str *messages) {
-  return rosie_syntax_op("block_dependencies", e, input, deps, messages);
+  return rosie_syntax_op("block_dependencies", e, input, deps, NULL, messages);
 }
 
 EXPORT
 int rosie_parse_expression (Engine *e, str *input, str *parsetree, str *messages) {
-  return rosie_syntax_op("parse_expression", e, input, parsetree, messages);
+  return rosie_syntax_op("parse_expression", e, input, parsetree, NULL, messages);
 }
 
 EXPORT
 int rosie_parse_block (Engine *e, str *input, str *parsetree, str *messages) {
-  return rosie_syntax_op("parse_block", e, input, parsetree, messages);
+  return rosie_syntax_op("parse_block", e, input, parsetree, NULL, messages);
+}
+
+EXPORT
+int rosie_import_expression_deps (Engine *e, str *expression, str *pkgs, int *err, str *messages) {
+  return rosie_syntax_op("import_expression_deps", e, expression, pkgs, err, messages);
 }
 
 static int push_rcfile_args (Engine *e, str *filename) {
