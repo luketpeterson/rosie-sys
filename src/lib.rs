@@ -65,7 +65,7 @@ impl RosieString<'_> {
         }
     }
     pub fn into_str<'a>(self) -> &'a str {
-        str::from_utf8(self.into_bytes()).unwrap()
+        self.try_into_str().unwrap()
     }
     pub fn from_str<'a>(s: &'a str) -> RosieString<'a> {
         unsafe { rosie_string_from(s.as_ptr(), s.len()) }
@@ -81,8 +81,13 @@ impl RosieString<'_> {
         }
     }
     pub fn as_str(&self) -> &str {
-        let string_slice = self.as_bytes();
-        str::from_utf8(string_slice).unwrap()
+        self.try_as_str().unwrap()
+    }
+    pub fn try_as_str(&self) -> Option<&str> {
+        str::from_utf8(self.as_bytes()).ok()
+    }
+    pub fn try_into_str<'a>(self) -> Option<&'a str> {
+        str::from_utf8(self.into_bytes()).ok()
     }
     pub fn len(&self) -> usize {
         usize::try_from(self.len).unwrap()
