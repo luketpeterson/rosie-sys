@@ -70,6 +70,9 @@ impl RosieString<'_> {
     pub fn from_str<'a>(s: &'a str) -> RosieString<'a> {
         unsafe { rosie_string_from(s.as_ptr(), s.len()) }
     }
+    pub fn from_bytes<'a>(b: &'a [u8]) -> RosieString<'a> {
+        unsafe { rosie_string_from(b.as_ptr(), b.len()) }
+    }
     pub fn is_valid(&self) -> bool {
         self.ptr != ptr::null()
     }
@@ -320,9 +323,9 @@ impl <'a>RawMatchResult<'a> {
 /// in a more appropriate location
 ///
 /// TODO: In the future, we should embed the CONTENTS of the rosie_home into the binary, not just the path
-pub fn rosie_home_default() -> Option<&'static str> {
+pub fn rosie_home_default() -> Option<&'static [u8]> {
 
-    option_env!("ROSIE_HOME")
+    option_env!("ROSIE_HOME").map(|env_str| env_str.as_bytes())
 }
 
 //Interfaces to the raw librosie functions
@@ -401,7 +404,7 @@ fn librosie() {
     //Init the Rosie home directory, if we have the rosie_home_default()
     let mut message_buf = RosieString::empty();
     if let Some(rosie_home_dir) = rosie_home_default() {
-        unsafe{ rosie_home_init(&RosieString::from_str(&rosie_home_dir), &mut message_buf) };
+        unsafe{ rosie_home_init(&RosieString::from_bytes(&rosie_home_dir), &mut message_buf) };
     }
     message_buf.manual_drop();
 
@@ -415,7 +418,7 @@ fn librosie() {
     let result_code = unsafe { rosie_libpath(engine, &mut path_rosie_string) };
     assert_eq!(result_code, 0);
     if let Some(rosie_home_dir) = rosie_home_default() {
-        assert_eq!(path_rosie_string.as_str(), format!("{}/rpl", rosie_home_dir));
+        assert_eq!(path_rosie_string.as_str(), format!("{}/rpl", str::from_utf8(rosie_home_dir).unwrap()));
     }
     path_rosie_string.manual_drop();
 
