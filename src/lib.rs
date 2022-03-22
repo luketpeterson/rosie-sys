@@ -241,7 +241,8 @@ pub struct EnginePtr {
     pub e: *mut c_void, //This pointer really has a lifetime of 'a, hence the phantom
 }
 
-// NOTE: Leaving undocumented because documenting it here confuses the re-exported documentation. Here is the original doc -> /// A structure containing the match results from a [rosie_match] call.
+// NOTE: Leaving undocumented because documenting it here confuses the re-exported documentation. Here is the original doc
+// original docs -> /// A structure containing the match results from a [rosie_match] call.
 // original docs -> /// 
 // original docs -> /// **NOTE**: A RawMatchResult points to memory inside the engine that is associated with the pattern, therefore you may
 // original docs -> /// not perform any additional matching with that pattern until the RawMatchResult has been released.  This is enforced with
@@ -262,6 +263,7 @@ pub struct RawMatchResult<'a> {
 /// be re-exported by the `rosie` high-level crate, whereas these methods are used inside the implementation of the crate itself.
 pub trait LibRosieMatchResult {
     fn empty() -> Self;
+    fn data(&self) -> &RosieString;
 }
 
 impl LibRosieMatchResult for RawMatchResult<'_> {
@@ -273,6 +275,9 @@ impl LibRosieMatchResult for RawMatchResult<'_> {
             ttotal: 0,
             tmatch: 0
         }
+    }
+    fn data(&self) -> &RosieString {
+        &self.data
     }
 }
 
