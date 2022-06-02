@@ -453,6 +453,7 @@ static TTree *newtree (lua_State *L, int len) {
 static TTree *newleaf (lua_State *L, int tag) {
   TTree *tree = newtree(L, 1);
   tree->tag = tag;
+  tree->key = 0;
   return tree;
 }
 
@@ -460,6 +461,7 @@ static TTree *newleaf (lua_State *L, int tag) {
 static TTree *newcharset (lua_State *L) {
   TTree *tree = newtree(L, bytes2slots(CHARSETSIZE) + 1);
   tree->tag = TSet;
+  tree->key = 0;
   loopset(i, treebuffer(tree)[i] = 0);
   return tree;
 }
@@ -483,7 +485,9 @@ static TTree *seqaux (TTree *tree, TTree *sib, int sibsize) {
 */
 static void fillseq (TTree *tree, int tag, int n, const char *s) {
   int i;
+  assert( (tag==TAny) || (tag==TChar) );
   for (i = 0; i < n - 1; i++) {  /* initial n-1 copies of Seq tag; Seq ... */
+    tree->key = 0;		 /* no key for TAny or TChar */
     tree->tag = TSeq; tree->u.ps = 2;
     sib1(tree)->tag = tag;
     sib1(tree)->u.n = s ? (byte)s[i] : 0;
@@ -491,6 +495,7 @@ static void fillseq (TTree *tree, int tag, int n, const char *s) {
   }
   tree->tag = tag;  /* last one does not need TSeq */
   tree->u.n = s ? (byte)s[i] : 0;
+  tree->key = 0;
 }
 
 
@@ -568,6 +573,7 @@ static TTree *newroot1sib (lua_State *L, int tag) {
   TTree *tree1 = getpatt(L, 1, &s1);
   TTree *tree = newtree(L, 1 + s1);  /* stack: new tree */
   tree->tag = tag;
+  tree->key = 0;
   memcpy(sib1(tree), tree1, s1 * sizeof(TTree));
   copyktable(L, 1);
   return tree;
@@ -800,36 +806,21 @@ static int capture_aux (lua_State *L, int cap, int labelidx) {
   TTree *tree = newroot1sib(L, TCapture);
   tree->cap = cap;
   tree->key = (labelidx == 0) ? 0 : addtonewktable(L, 1, labelidx);
+  tree->u.ps = 0;
   LOGf("just after call to addtonewktable, tree->key is %d\n", tree->key);
   return 1;
 }
-
-
-/*
-** Fill a tree with an empty capture, using an empty (TTrue) sibling.
-*/
-static TTree *auxemptycap (TTree *tree, int cap) {
-  tree->tag = TCapture;
-  tree->cap = cap;
-  sib1(tree)->tag = TTrue;
-  return tree;
-}
-
-
-/*
-** Create a tree for an empty capture
-*/
-/* static TTree *newemptycap (lua_State *L, int cap) { */
-/*   return auxemptycap(newtree(L, 2), cap); */
-/* } */
-
 
 /*
 ** Create a tree for an empty capture with an associated Lua value
 */
 static TTree *newemptycapkey (lua_State *L, int cap, int idx) {
-  TTree *tree = auxemptycap(newtree(L, 2), cap);
+  TTree *tree = newtree(L, 2);
+  tree->tag = TCapture;
+  tree->cap = cap;
+  sib1(tree)->tag = TTrue;
   tree->key = addtonewktable(L, 0, idx);
+  tree->u.n = 0;
   LOG("just after call to addtonewktable\n");
   return tree;
 }
@@ -1429,7 +1420,7 @@ int r_match_lua (lua_State *L) {
   Chunk chunk;
   RBuffer *output;
   int start, etype, timeflag;
-  struct rosie_matchresult match;
+  struct rosie_matchresult match_result;
   
   /* FUTURE: remove call to getpatt, thereby allowing ONLY a compiled peg here */
   p = (getpatt(L, 1, NULL), getpattern(L, 1));
@@ -1496,7 +1487,7 @@ int r_match_lua (lua_State *L) {
 		      &input, startpos, 0,
 		      encoder, timeflag,
 		      *output,
-		      &match);
+		      &match_result);
 
   if (err) {
     const char *msg = STRERROR(err, MATCH_MESSAGES);
@@ -1512,9 +1503,10 @@ int r_match_lua (lua_State *L) {
 
   lua_pushvalue(L, SUBJIDX+1);	             /* outut buffer userdata */
   /* Indicate no match */
-  if (!match.data.ptr && !match.data.len) lua_pushinteger(L, 0);
-  lua_pushinteger(L, match.leftover);	     /* leftover chars */
-  lua_pushboolean(L, match.abend);
+  if (!match_result.data.ptr && !match_result.data.len)
+    lua_pushinteger(L, 0);
+  lua_pushinteger(L, match_result.leftover); /* leftover chars */
+  lua_pushboolean(L, match_result.abend);
   lua_pushinteger(L, stats.total_time);
   lua_pushinteger(L, stats.match_time);
   return 5;		    /* Return the top 5 values on the stack */
@@ -1546,7 +1538,7 @@ int r_match_lua (lua_State *L) {
 int r_match_C2 (void *pattern_as_void_ptr,
 		struct rosie_string *input, uint32_t startpos, uint32_t endpos,
 		uint8_t etype, uint8_t collect_times,
-		Buffer *output, struct rosie_matchresult *match) {
+		Buffer *output, struct rosie_matchresult *match_result) {
   int err;
   Chunk chunk;
   Encoder encoder;
@@ -1554,7 +1546,7 @@ int r_match_C2 (void *pattern_as_void_ptr,
   if (!pattern_as_void_ptr) return MATCH_ERR_NULL_PATTERN;
   if (!input) return MATCH_ERR_NULL_INPUT;
   if (!output) return MATCH_ERR_NULL_OUTPUT;
-  if (!match) return MATCH_ERR_NULL_MATCHRESULT;
+  if (!match_result) return MATCH_ERR_NULL_MATCHRESULT;
   /* Note: startpos, endpos are checked in vm_match2() */
 
   Pattern *p = (Pattern *) pattern_as_void_ptr;
@@ -1577,7 +1569,7 @@ int r_match_C2 (void *pattern_as_void_ptr,
 		  encoder,
 		  collect_times,
 		  output,
-		  match);
+		  match_result);
 
   if (err != 0) return err;
 
@@ -1586,16 +1578,16 @@ int r_match_C2 (void *pattern_as_void_ptr,
        interpret the match data and fill the output buffer if
        necessary. 
     */
-    assert(match->data.ptr == NULL);
-    if (match->data.len == MATCH_WITHOUT_DATA) {
+    assert(match_result->data.ptr == NULL);
+    if (match_result->data.len == MATCH_WITHOUT_DATA) {
       /* Found a match */
       assert( output->n == 0 ); /* bool_encoder generates no output */
       /* Expand output buffer if necessary */
       if (!buf_prepsize(output, (size_t) input->len)) return MATCH_OUT_OF_MEM;
       /* Copy input into output buffer */
       buf_addlstring_UNSAFE(output, input->ptr, (size_t) input->len);
-      match->data.ptr = output->data;
-      match->data.len = output->n;
+      match_result->data.ptr = output->data;
+      match_result->data.len = output->n;
     }
   }
 

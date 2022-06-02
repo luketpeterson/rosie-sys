@@ -24,6 +24,8 @@
 #define ERR_OUT_OF_MEMORY -2
 #define ERR_SYSCALL_FAILED -3
 #define ERR_ENGINE_CALL_FAILED -4
+#define ERR_LUA_CLI_LOAD_FAILED -5
+#define ERR_LUA_CLI_EXEC_FAILED -6
 
 #include <pthread.h>		/* FUTURE: Make this conditional, so
 				   that users who do not need

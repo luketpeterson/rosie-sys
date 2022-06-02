@@ -63,7 +63,7 @@ static const char *char2escape[256] = {
  * this space in advance, we gain 15-20% performance improvement.
  */
 
-static int addlstring_json(Buffer *buf, const char *str, size_t len)
+static int addlstring_json(Buffer *buf, const char *string, size_t len)
 {
   assert( sizeof(char2escape) == 256 * sizeof(char *) );
   static const char dquote = '\"';
@@ -74,7 +74,7 @@ static int addlstring_json(Buffer *buf, const char *str, size_t len)
   buf_prepsize(buf, 2 + 6*len);
   buf_addchar_UNSAFE(buf, dquote);
   for (i = 0; i < len; i++) { 
-    c = str[i];
+    c = string[i];
     /* this explicit test on c gives about a 5% speedup on typical data */
     if ((c=='\"') || (c=='\\') || (c>0 && c<32) || (c==127)) {
       escstr = char2escape[(unsigned char)c]; 

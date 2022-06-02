@@ -36,17 +36,17 @@ static void print_capture(CapState *cs) {
   Capture *c = cs->cap;
   printf("  kind = %s\n", CAPTURE_NAME(capkind(c)));
   printf("  pos (1-based) = %lu\n", c->s ? (c->s - cs->s + 1) : 0);
-  const char *str = ktable_element_name(cs->kt, capidx(c), &len);
-  if (str) {
+  const char *name = ktable_element_name(cs->kt, capidx(c), &len);
+  if (name) {
     printf("  idx = %u\n", capidx(c));
-    printf("  ktable[idx] = %.*s\n", (int) len, str);
+    printf("  ktable[idx] = %.*s\n", (int) len, name);
   }
 }
 
 static void print_constant_capture(CapState *cs) {
   size_t len;
-  const char *str = ktable_element_name(cs->kt, capidx(cs->cap), &len);
-  printf("  constant match: %.*s\n", (int) len, str);
+  const char *name = ktable_element_name(cs->kt, capidx(cs->cap), &len);
+  printf("  constant match: %.*s\n", (int) len, name);
 }
 
 int debug_Close(CapState *cs, Buffer *buf, int count, const char *start) {
@@ -102,14 +102,14 @@ static void encode_pos(size_t pos, int negate, Buffer *buf) {
   buf_addint(buf, intpos);
 }
 
-static void encode_string(const char *str, size_t len,
+static void encode_string(const char *string, size_t len,
 			  int shortflag, int negflag, Buffer *buf) {
-  assert(str);
+  assert(string);
   /* encode size as a short or an int */
   if (shortflag) buf_addshort(buf, (short) (negflag ? -len : len));
   else buf_addint(buf, (int) (negflag ? -len : len));
   /* encode the string by copying it into the buffer */
-  buf_addlstring(buf, str, len); 
+  buf_addlstring(buf, string, len); 
 }
 
 static void encode_ktable_element(CapState *cs, byte negflag, Buffer *buf) {

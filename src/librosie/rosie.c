@@ -38,7 +38,7 @@ static const char *progname = "rosie"; /* default */
     fprintf(stderr, "  use script ./rosie from rosie directory to run the local build\n");		\
     fprintf(stderr, "  or set LD_LIBRARY_PATH to build/lib\n");		\
     fprintf(stderr, "  details of error are: %s\n", BINDerrorstring); \
-    exit(3);						\
+    exit(-3);						\
   }							\
   } while (0)
 
@@ -62,7 +62,7 @@ int main (int argc, char **argv) {
   handle = dlopen(LIBROSIE, RTLD_LAZY);
   if (!handle) {
     fprintf(stderr, "%s\n", dlerror());
-    exit(2);
+    exit(-2);
   }
   dlerror();    /* Clear any previous error */
   
@@ -73,7 +73,7 @@ int main (int argc, char **argv) {
   Engine *e = rosie_new(&messages);
   if (!e) {
     fprintf(stderr, "%s: %.*s\n", progname, messages.len, messages.ptr);
-    exit(1);
+    exit(-1);
   }
 
   if ((argc > 0) && argv[1] && !strncmp(argv[1], "-D", 3)) {
@@ -96,6 +96,31 @@ int main (int argc, char **argv) {
 #endif
   }
 
+  /* 
+     Status values 0, 1 are used by the boolean output encoder.
+     Status of 0 is also the unix "all is ok" value.
+     Negative values indicate that some error occurred.
+  */
+  
+  if (status >= 0) goto ok;
+
+  fprintf(stderr, "%s: error %d: ", progname, status);
+  switch (status) {
+  case ERR_OUT_OF_MEMORY:
+    fprintf(stderr, "out of memory\n");
+    break;
+  case ERR_SYSCALL_FAILED:
+    fprintf(stderr, "syscall failed\n");
+    break;
+  case ERR_LUA_CLI_LOAD_FAILED:
+    fprintf(stderr, "CLI failed to load (installation is incomplete?)\n");
+    break;
+  case ERR_LUA_CLI_EXEC_FAILED:
+    fprintf(stderr, "an unknown error occurred (this is a bug), additional info: %s\n",
+	    err ? err : "none");
+  }
+  
+ ok:
   rosie_finalize(e);
   return status;
 }

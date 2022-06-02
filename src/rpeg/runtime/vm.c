@@ -754,7 +754,7 @@ int vm_match2 (/* inputs: */
 	       uint8_t collect_times,
 	       Buffer *output,
 	       /* output: */
-	       struct rosie_matchresult *match) {
+	       struct rosie_matchresult *match_result) {
   Capture initial_capture[INIT_CAPLISTSIZE];
   Capture *capture = initial_capture;
   int err, abend;
@@ -777,7 +777,7 @@ int vm_match2 (/* inputs: */
   if (startpos > input->len) return MATCH_ERR_STARTPOS;
   if (endpos < startpos) return MATCH_ERR_ENDPOS;
 
-  stats = (Stats) {match->ttotal, match->tmatch, 0, 0, 0, 0};
+  stats = (Stats) {match_result->ttotal, match_result->tmatch, 0, 0, 0, 0};
   if (collect_times) t0 = clock();
 
   err = vm(&r, input->ptr, input->ptr + startpos, input->ptr + endpos,
@@ -803,15 +803,15 @@ int vm_match2 (/* inputs: */
 
   if (collect_times) {
     tmatch = clock();
-    match->tmatch += tmatch - t0;
+    match_result->tmatch += tmatch - t0;
   }
 
   if (r == NULL) {
-    match->data.ptr = NULL;	  /* no match */
-    match->data.len = 0;	  /* no error */
-    match->leftover = endpos - startpos;
-    match->abend = 0;
-    if (collect_times) match->ttotal += tmatch - t0;
+    match_result->data.ptr = NULL;	  /* no match */
+    match_result->data.len = 0;	  /* no error */
+    match_result->leftover = endpos - startpos;
+    match_result->abend = 0;
+    if (collect_times) match_result->ttotal += tmatch - t0;
     goto done;
   }
 
@@ -826,18 +826,18 @@ int vm_match2 (/* inputs: */
        that the match struct can be returned to a librosie caller while
        we keep the Buffer object private.
     */
-    match->data.ptr = output->data;
-    match->data.len = output->n;
+    match_result->data.ptr = output->data;
+    match_result->data.len = output->n;
   } else {
     /* Must be bool output encoder, which does no capture processing */
-    match->data.ptr = NULL;
-    match->data.len = MATCH_WITHOUT_DATA;
+    match_result->data.ptr = NULL;
+    match_result->data.len = MATCH_WITHOUT_DATA;
     abend = 0;			/* TODO: How to set this w/o walking captures? */
   }
 
-  if (collect_times) match->ttotal += clock() - t0;
-  match->leftover = endpos - (r - input->ptr);
-  match->abend = abend;
+  if (collect_times) match_result->ttotal += clock() - t0;
+  match_result->leftover = endpos - (r - input->ptr);
+  match_result->abend = abend;
 
  done:
   if (capture != initial_capture) free(capture);

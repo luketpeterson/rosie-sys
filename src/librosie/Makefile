@@ -1,11 +1,11 @@
-## -*- Mode: Makefile; -*-                                             
-##
-## Makefile for building librosie
-##
-## © Copyright Jamie A. Jennings 2019, 2020.
-## © Copyright IBM Corporation 2016, 2017, 2018.
-## LICENSE: MIT License (https://opensource.org/licenses/mit-license.html)
-## AUTHOR: Jamie A. Jennings
+# -*- Mode: BSDmakefile; -*-                                          
+#
+# Makefile for building librosie
+#
+# © Copyright Jamie A. Jennings 2019, 2020.
+# © Copyright IBM Corporation 2016, 2017, 2018.
+# LICENSE: MIT License (https://opensource.org/licenses/mit-license.html)
+# AUTHOR: Jamie A. Jennings
 
 ## -----------------------------------------------------------------------------
 ##
@@ -95,9 +95,15 @@ RPEG_INCLUDE_DIR=$(HOME)/src/rpeg/include
 
 MYCFLAGS=-I$(LUA_INCLUDE_DIR) -I$(RPEG_INCLUDE_DIR) \
 	$(debug_flag) $(ndebug_flag) $(lua_debug) $(rosie_cli) $(debugger_flag) $(logging_flag)
-MYLDFLAGS= 
-MYLIBS= 
+MYLDFLAGS=
+MYLIBS=
 MYOBJS=
+
+ifndef ROSIEBUILDLIB
+$(error "Makefile variable ROSIEBUILDLIB not set")
+endif
+
+RPATH_LDFLAGS="-Wl,-rpath,$(ROSIEBUILDLIB)"
 
 CFLAGS= -O2 -Wall -Wextra -pthread -DMULTIPLE_THREADS -DLUA_COMPAT_5_2 $(SYSCFLAGS) $(MYCFLAGS)
 LDFLAGS= $(SYSLDFLAGS) $(MYLDFLAGS)
@@ -119,7 +125,7 @@ dependent_objs = liblua/*.o \
 		$(CJSON)
 
 .PHONY:
-all: $(BINDIR)/$(ROSIE_DYLIB) $(BINDIR)/librosie.a $(BINDIR)/rosie
+all: $(BINDIR)/$(ROSIE_DYLIB) $(BINDIR)/librosie.a $(BINDIR)/rosie $(BINDIR)/rosie_with_rpath
 
 .PHONY:
 RPEG:
@@ -159,6 +165,9 @@ $(BINDIR)/librosie.a: $(BINDIR)/librosie.o $(dependent_objs) | liblua
 
 $(BINDIR)/rosie.o: rosie.c librosie.c librosie.h lua_repl.h $(BINDIR)/$(ROSIE_DYLIB) | $(BINDIR) RPEG $(CJSON)
 	$(CC) -o $@ -c rosie.c $(ASAN_OPT) $(CFLAGS) -I$(RPEG_INCLUDE_DIR)
+
+$(BINDIR)/rosie_with_rpath: $(BINDIR)/rosie.o $(dependent_objs) liblua  | $(BINDIR)
+	$(CC) -o $@ $< $(ASAN_OPT) $(RPATH_LDFLAGS) $(dependent_objs) $(LIBS) $(readline_lib) 
 
 $(BINDIR)/rosie: $(BINDIR)/rosie.o $(dependent_objs) liblua  | $(BINDIR)
 	$(CC) -o $@ $< $(ASAN_OPT) $(dependent_objs) $(LIBS) $(readline_lib)

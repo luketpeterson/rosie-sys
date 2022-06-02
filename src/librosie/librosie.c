@@ -1651,22 +1651,27 @@ int rosie_exec_cli (Engine *e, int argc, char **argv, char **err) {
 
   int status = luaL_loadfile(L, fname);
   if (status != LUA_OK) {
-    LOGf("Failed to load cli from %s\n", fname);
-    *err = strndup(lua_tostring(L, -1), MAXPATHLEN);
-    lua_settop(L, 0);
-    RELEASE_ENGINE_LOCK(e);
-    return status;
-  }  
+      status = ERR_LUA_CLI_LOAD_FAILED;
+      goto cli_fail;
+  }
   status = docall(L, 0, 1);
   if (status != LUA_OK) {
-    const char *err = lua_tostring(L, -1);
-    lua_pop(L, 1);  /* remove message */
-    const char *progname = NULL;
-    if (argv[0] && argv[0][0]) progname = argv[0];
-    fprintf(stderr, "%s: error (%d) executing CLI (incomplete installation?):\n%s\n", progname, status, err);
-  } else {
-    status = lua_tointeger(L, -1);
+    status = ERR_LUA_CLI_EXEC_FAILED;
+    goto cli_fail;
   }
+  /* 
+     The 'bool' output encoder returns true or false.  Other encoders
+     do not return anything useful.
+  */
+  status = lua_isboolean(L, -1) ? lua_toboolean(L, -1) : lua_tonumber(L, -1);
+  lua_settop(L, 0);
+  RELEASE_ENGINE_LOCK(e);
+  return status;
+
+ cli_fail:
+  if (*err) *err = (char *) lua_tostring(L, -1);
+  LOGf("CLI failed: loaded from %s, error code #%d, extra info: %s)\n",
+       fname, status *err);
   lua_settop(L, 0);
   RELEASE_ENGINE_LOCK(e);
   return status;
