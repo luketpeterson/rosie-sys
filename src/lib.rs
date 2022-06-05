@@ -147,7 +147,7 @@ impl RosieError {
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub enum MatchEncoder {
     /// The simplest and fastest encoder.  Outputs `true` if the pattern matched and `false` otherwise.
-    Bool,
+    Status,
     /// A compact encoding of the match information into an array of bytes.
     Byte,
     /// A human-readable format using ANSI text coloring for different elements.  The colors associated with each element
@@ -179,7 +179,7 @@ pub trait LibRosieMatchEncoder {
 impl LibRosieMatchEncoder for MatchEncoder {
     fn as_bytes(&self) -> &[u8] {
         match self {
-            MatchEncoder::Bool => b"bool\0",
+            MatchEncoder::Status => b"status\0",
             MatchEncoder::Byte => b"byte\0",
             MatchEncoder::Color => b"color\0",
             MatchEncoder::JSON => b"json\0",
@@ -438,7 +438,7 @@ fn librosie() {
     //Match the pattern against a matching input using rosie_match
     let input_rosie_string = RosieString::from_str("21");
     let mut raw_match_result = RawMatchResult::empty();
-    let result_code = unsafe{ rosie_match(engine, pat_idx, 1, MatchEncoder::Bool.as_bytes().as_ptr(), &input_rosie_string, &mut raw_match_result) }; 
+    let result_code = unsafe{ rosie_match(engine, pat_idx, 1, MatchEncoder::Status.as_bytes().as_ptr(), &input_rosie_string, &mut raw_match_result) }; 
     assert_eq!(result_code, 0);
     assert_eq!(raw_match_result.did_match(), true);
     assert!(raw_match_result.time_elapsed_matching() <= raw_match_result.time_elapsed_total()); //A little lame as tests go, but validates they are called at least.

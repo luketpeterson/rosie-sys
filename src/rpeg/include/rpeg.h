@@ -29,7 +29,7 @@ typedef struct r_encoder_type {
 #define ENCODE_LINE 2
 #define ENCODE_BYTE 3
 #define ENCODE_DEBUG 4
-#define ENCODE_BOOL 5
+#define ENCODE_STATUS 5
 
 /* These codes are returned in the length field of matchresult->data
  * (str) whose ptr is NULL as a cheap way to give the caller an
@@ -37,8 +37,8 @@ typedef struct r_encoder_type {
  * match" situation (not an error, just an indication that a match did
  * not succeed).
  */
-#define NO_MATCH           0   //-- For 'bool' output encoder
-#define MATCH_WITHOUT_DATA 1   //-- For 'bool' output encoder
+#define NO_MATCH           0   //-- For 'status' output encoder
+#define MATCH_WITHOUT_DATA 1   //-- For 'status' output encoder
 #define ERR_NO_ENCODER     2   //-- Or "no trace style"
 #define ERR_NO_FILE        3   //-- No such file or directory
 #define ERR_NO_PATTERN     4   //-- Not a valid rplx 
@@ -49,7 +49,7 @@ typedef struct r_encoder_type {
 __attribute__((unused))
 static const r_encoder_t r_encoders[] = { 
      {"byte",   ENCODE_BYTE},
-     {"bool",   ENCODE_BOOL},
+     {"status", ENCODE_STATUS},
      {"json",   ENCODE_JSON},
      {"line",   ENCODE_LINE},
      {"debug",  ENCODE_DEBUG},

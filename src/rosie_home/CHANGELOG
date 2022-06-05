@@ -21,7 +21,25 @@
 	returned by the trace function are slightly simplified now, compared to
 	before this fix.
 
-	
+	REMOVED: The 'bool' output encoder has been replaced by a new 'status'
+	output encoder, which returns only match status (0 = no match; 1 =
+	match).
+
+	ADDED: The 'status' output encoder which returns 0 or 1.
+
+	CHANGED: Several internal changes were made to enable a Rust interface
+	to librosie.  One such change is that an engine no longer has an
+	associated match data buffer that it can reuse.  Instead, each rplx
+	object has a match buffer that is reused (to avoid unneeded allocations
+	when doing repetitive matching using the same pattern).
+
+	CHANGED: The EXPERIMENTAL back-reference implementation now enforces the
+	restriction that the target of the "backref:" macro must be a pattern in
+	the current package, i.e. an unqualified name with no dots in it.
+
+	FIXED: Issue #121.  Simplified the html parsing example, which uses back
+	references (an EXPERIMENTAL feature, because these are not defined for
+	PEG systems, so we created our own definition).
 
 2021-02-12  Jamie Jennings  <jamie@rosie-lang.org>
 

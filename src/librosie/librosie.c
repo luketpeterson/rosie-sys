@@ -1474,7 +1474,7 @@ int rosie_read_rcfile (Engine *e, str *filename, int *file_exists, str *options,
     *options = rosie_new_string_from_const("read_rcfile() failed");
     goto read_rcfile_failed;
   }
-  /* return values are file_existed (bool), options_table (or false), messages (or nil) */
+  /* Return values are file_existed (bool), options_table (or false), messages (or nil) */
   *file_exists = lua_toboolean(L, -3);
   if (*file_exists) {
     LOG("rc file exists\n");
@@ -1541,7 +1541,7 @@ int rosie_execute_rcfile (Engine *e, str *filename, int *file_exists, int *no_er
     RELEASE_ENGINE_LOCK(e);
     return ERR_ENGINE_CALL_FAILED;
   }
-  /* return values are file_existed, processed_without_error, messages */
+  /* Return values are file_existed, processed_without_error, messages */
   *file_exists = lua_toboolean(L, -3);
   *no_errors = FALSE;
   if (*file_exists) {
@@ -1659,10 +1659,7 @@ int rosie_exec_cli (Engine *e, int argc, char **argv, char **err) {
     status = ERR_LUA_CLI_EXEC_FAILED;
     goto cli_fail;
   }
-  /* 
-     The 'bool' output encoder returns true or false.  Other encoders
-     do not return anything useful.
-  */
+  /* The 'status' output encoder returns true or false. */
   status = lua_isboolean(L, -1) ? lua_toboolean(L, -1) : lua_tonumber(L, -1);
   lua_settop(L, 0);
   RELEASE_ENGINE_LOCK(e);

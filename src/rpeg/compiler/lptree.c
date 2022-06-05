@@ -1365,7 +1365,7 @@ static int lp_saveRPLX (lua_State *L) {
 static Encoder debug_encoder = { debug_Open, debug_Close };
 static Encoder byte_encoder = { byte_Open, byte_Close };
 static Encoder json_encoder = { json_Open, json_Close };
-static Encoder bool_encoder = { NULL, NULL };
+static Encoder status_encoder = { NULL, NULL };
 
 static int set_encoder (Encoder *encoder, int etype) {
   switch (etype) {
@@ -1376,10 +1376,10 @@ static int set_encoder (Encoder *encoder, int etype) {
     *encoder = json_encoder; break;
   }
   case ENCODE_LINE: {
-    *encoder = bool_encoder; break;
+    *encoder = status_encoder; break;
   }
-  case ENCODE_BOOL: {
-    *encoder = bool_encoder; break;
+  case ENCODE_STATUS: {
+    *encoder = status_encoder; break;
   }
   case ENCODE_DEBUG: {
     *encoder = debug_encoder; break;
@@ -1574,14 +1574,16 @@ int r_match_C2 (void *pattern_as_void_ptr,
   if (err != 0) return err;
 
   if (etype == ENCODE_LINE) {
-    /* The "line" encoder passes the bool_encoder to the vm.  Now we
-       interpret the match data and fill the output buffer if
-       necessary. 
+    /* The 'line' encoder passes the 'status' encoder to the vm.  Now
+       we interpret the match status and fill the output buffer if
+       necessary.
     */
     assert(match_result->data.ptr == NULL);
+    /* When ptr is NULL, the info we need is in the len field. */
     if (match_result->data.len == MATCH_WITHOUT_DATA) {
       /* Found a match */
-      assert( output->n == 0 ); /* bool_encoder generates no output */
+      /* Verify that 'status' encoder generates no output */
+      assert( output->n == 0 );
       /* Expand output buffer if necessary */
       if (!buf_prepsize(output, (size_t) input->len)) return MATCH_OUT_OF_MEM;
       /* Copy input into output buffer */

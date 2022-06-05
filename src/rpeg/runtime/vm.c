@@ -829,7 +829,7 @@ int vm_match2 (/* inputs: */
     match_result->data.ptr = output->data;
     match_result->data.len = output->n;
   } else {
-    /* Must be bool output encoder, which does no capture processing */
+    /* Must be 'status' output encoder, which does no capture processing */
     match_result->data.ptr = NULL;
     match_result->data.len = MATCH_WITHOUT_DATA;
     abend = 0;			/* TODO: How to set this w/o walking captures? */
