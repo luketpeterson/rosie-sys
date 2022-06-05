@@ -1,6 +1,6 @@
 [package]
 name = "rosie-sys"
-version = "0.1.0" #DONOTPUBLISH, Include a version that reflects the underlying Rosie source
+version = "1.3.0"
 edition = "2018"
 authors = ["Luke Peterson <luke@infoplatter.com>"]
 license = "MIT OR Apache-2.0"
@@ -9,7 +9,7 @@ repository = "https://github.com/luketpeterson/rosie-sys/"
 readme = "README.md"
 homepage = "https://rosie-lang.org/about/"
 keywords = ["rosie", "pattern", "match", "matching", "FSA", "regex"]
-categories = ["text-processing"]
+categories = ["text-processing", "encoding", "parsing"]
 links = "rosie"
 build = "build.rs"
 

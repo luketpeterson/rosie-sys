@@ -49,8 +49,7 @@ However, Rosie may also be available through your package-manager of choice.  Fo
 
 Or if you would prefer to install Rosie via the Makefile, [Look Here](https://rosie-lang.org/blog/2020/05/03/new-build.html).
 
-**NOTE**: This crate has been tested aganst `librosie` version **1.X.X**, although it may be compatible with other versions.
-DONOTPUBLISH: Update actual version when it's released, instead of X.X
+**NOTE**: This crate has been tested aganst `librosie` version **1.3.0**, although it may be compatible with other versions.
 
 # Updating the Rosie source inside this crate
 
