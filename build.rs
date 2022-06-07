@@ -17,16 +17,11 @@ extern crate pkg_config;
 
 fn main() -> Result<(), i32> {
 
-    //If both or neither "build-mode" features are specified then it's an error
+    //If both "build-mode" features are specified then it's an error
     #[cfg(all(feature = "link_shared_librosie", feature = "build_static_librosie"))]
     {
         // println!("cargo:warning=Error: both link_shared_librosie and build_static_librosie are specified");
         println!("Error: both link_shared_librosie and build_static_librosie are specified");
-        return Err(-1);
-    }
-    #[cfg(not(any(feature = "link_shared_librosie", feature = "build_static_librosie")))]
-    {
-        println!("Error: either link_shared_librosie or build_static_librosie must be specified");
         return Err(-1);
     }
 
@@ -37,6 +32,7 @@ fn main() -> Result<(), i32> {
         let librosie = pkg_config::Config::new()
             .cargo_metadata(true)
             .print_system_libs(true)
+            .atleast_version("1.3.0")
             .probe("rosie");
         if librosie.is_ok() {
             //pkg_config should output the necessary output for cargo
@@ -50,7 +46,7 @@ fn main() -> Result<(), i32> {
         }
 
         //We got here because we failed to find an existing librosie
-        println!("Error: link_shared_librosie specified, but librosie couldn't be found");
+        println!("Error: link_shared_librosie specified, but librosie 1.3.0 or higher couldn't be found");
         return Err(-1);
     }
 
@@ -67,6 +63,18 @@ fn main() -> Result<(), i32> {
         println!("Error: librosie build failure");
         return Err(-1);
     }
+
+    //If neither env vars are set then it's an error
+    #[cfg(not(any(feature = "link_shared_librosie", feature = "build_static_librosie")))]
+    {
+        println!("Error: either the link_shared_librosie or build_static_librosie feature must be specified");
+        return Err(-1);
+    }
+
+    //If we didn't take any of the above paths then exit, having built nothing,
+    //NOTE: This will never be hit, given the logic above
+    // println!("cargo:warning=ROSIE NOT BUILT.  Either the link_shared_librosie or build_static_librosie feature must be specified to build librosie");
+    // return Ok(());
 }
 
 //If we haven't found it using one of the pkg trackers, try to compile the smoke.c file to "smoke it out"
